@@ -154,7 +154,7 @@ function renderCards(dataArray) {
 
   dataArray.forEach(data => {
     const card = document.createElement('div');
-    card.className = 'weather-card rounded-2xl p-5 flex flex-col justify-between h-48 relative overflow-hidden group';
+    card.className = 'weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group border border-[#EEEEEE] md:border-none shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
     
     // 장식용 배경 이펙트
     const bgBlur = document.createElement('div');
@@ -162,7 +162,7 @@ function renderCards(dataArray) {
     card.appendChild(bgBlur);
 
     const innerContent = document.createElement('div');
-    innerContent.className = 'relative z-10 flex flex-col h-full';
+    innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
     
     innerContent.innerHTML = `
       <div class="flex justify-between items-start mb-2">
@@ -203,7 +203,7 @@ function initSkeleton() {
   // 20개의 스켈레톤 UI 생성
   for(let i=0; i<20; i++) {
     grid.innerHTML += `
-      <div class="weather-card skeleton-card rounded-2xl p-5 flex flex-col justify-between h-48 bg-[#FBFBFB] md:bg-slate-800/50 border md:border-slate-700/30">
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none">
         <div class="flex justify-between">
           <div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div>
           <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div>

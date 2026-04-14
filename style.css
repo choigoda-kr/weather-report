@@ -115,3 +115,19 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 1);
 }
+
+/* Flatpickr Mobile Width Override */
+@media (max-width: 768px) {
+  .flatpickr-calendar.open {
+    display: inline-block !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90vw !important;
+    max-width: 320px !important;
+  }
+  .flatpickr-innerContainer, .flatpickr-rContainer, .flatpickr-days, .dayContainer {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: 100% !important;
+  }
+}
