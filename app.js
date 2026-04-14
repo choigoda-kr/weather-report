@@ -63,7 +63,7 @@ async function fetchWeatherData(startDateStr, endDateStr) {
     const lons = locations.map(l => l.lon).join(',');
     
     // Batch Request URL 생성
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${endDateStr}`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${endDateStr}`;
     
     console.log('Fetching Open-Meteo Data...');
     const res = await fetch(url);
@@ -83,6 +83,9 @@ async function fetchWeatherData(startDateStr, endDateStr) {
       // 기상 상태 (현재)
       const currentCode = data.current?.weather_code !== undefined ? data.current.weather_code : -1;
       const condition = getWeatherCondition(currentCode);
+      
+      // 현재 기온 추출 및 가공
+      const currentTemp = data.current?.temperature_2m !== undefined ? data.current.temperature_2m.toFixed(1) : '-';
       
       // 누적 강수량 (기간 내 전체 합산)
       const dailyPrecips = data.daily?.precipitation_sum || [];
@@ -114,6 +117,7 @@ async function fetchWeatherData(startDateStr, endDateStr) {
       return {
         ...loc,
         condition,
+        currentTemp,
         totalPrecip,
         next24hPrecip,
         dailyDates: dailyPrecips.length ? data.daily.time : [],
@@ -166,7 +170,10 @@ function renderCards(dataArray) {
     
     innerContent.innerHTML = `
       <div class="flex justify-between items-start mb-2">
-        <h2 class="text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90">${data.name}</h2>
+        <div class="flex items-center gap-2">
+          <h2 class="text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90">${data.name}</h2>
+          <span class="text-lg font-bold text-slate-700 md:text-slate-200 mt-0.5 tracking-tight">${data.currentTemp} <span class="text-xs font-normal">°C</span></span>
+        </div>
         <div class="flex flex-col items-end">
           <i class="fa-solid ${data.condition.icon} text-3xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"></i>
           <span class="text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}</span>
