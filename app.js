@@ -25,17 +25,17 @@ const locations = [
 // Open-Meteo WMO Code 파싱 함수
 function getWeatherCondition(code) {
   switch (true) {
-    case code === 0: return { text: '맑음', icon: 'fa-sun', color: 'text-yellow-400' };
-    case code === 1: return { text: '대체로 맑음', icon: 'fa-cloud-sun', color: 'text-yellow-300' };
-    case code === 2: return { text: '구름조금', icon: 'fa-cloud', color: 'text-slate-300' };
-    case code === 3: return { text: '흐림', icon: 'fa-cloud', color: 'text-slate-400' };
-    case (code >= 45 && code <= 48): return { text: '안개', icon: 'fa-smog', color: 'text-slate-400' };
-    case (code >= 51 && code <= 55): return { text: '이슬비', icon: 'fa-cloud-rain', color: 'text-blue-300' };
-    case (code >= 61 && code <= 65): return { text: '비', icon: 'fa-cloud-showers-heavy', color: 'text-blue-500' };
-    case (code >= 71 && code <= 77): return { text: '눈', icon: 'fa-snowflake', color: 'text-white' };
-    case (code >= 80 && code <= 82): return { text: '소나기', icon: 'fa-cloud-showers-water', color: 'text-blue-400' };
-    case (code >= 95 && code <= 99): return { text: '뇌우', icon: 'fa-cloud-bolt', color: 'text-yellow-500' };
-    default: return { text: '알수없음', icon: 'fa-circle-question', color: 'text-slate-500' };
+    case code === 0: return { text: '맑음', icon: 'fa-sun', color: 'text-amber-500 md:text-yellow-400' };
+    case code === 1: return { text: '대체로 맑음', icon: 'fa-cloud-sun', color: 'text-orange-500 md:text-yellow-300' };
+    case code === 2: return { text: '구름조금', icon: 'fa-cloud', color: 'text-slate-500 md:text-slate-300' };
+    case code === 3: return { text: '흐림', icon: 'fa-cloud', color: 'text-slate-600 md:text-slate-400' };
+    case (code >= 45 && code <= 48): return { text: '안개', icon: 'fa-smog', color: 'text-slate-500 md:text-slate-400' };
+    case (code >= 51 && code <= 55): return { text: '이슬비', icon: 'fa-cloud-rain', color: 'text-blue-500 md:text-blue-300' };
+    case (code >= 61 && code <= 65): return { text: '비', icon: 'fa-cloud-showers-heavy', color: 'text-blue-600 md:text-blue-500' };
+    case (code >= 71 && code <= 77): return { text: '눈', icon: 'fa-snowflake', color: 'text-sky-500 md:text-white' };
+    case (code >= 80 && code <= 82): return { text: '소나기', icon: 'fa-cloud-showers-water', color: 'text-blue-500 md:text-blue-400' };
+    case (code >= 95 && code <= 99): return { text: '뇌우', icon: 'fa-cloud-bolt', color: 'text-indigo-600 md:text-yellow-500' };
+    default: return { text: '알수없음', icon: 'fa-circle-question', color: 'text-slate-500 md:text-slate-500' };
   }
 }
 
@@ -166,27 +166,27 @@ function renderCards(dataArray) {
     
     innerContent.innerHTML = `
       <div class="flex justify-between items-start mb-2">
-        <h2 class="text-xl font-bold tracking-tight text-white/90">${data.name}</h2>
+        <h2 class="text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90">${data.name}</h2>
         <div class="flex flex-col items-end">
-          <i class="fa-solid ${data.condition.icon} text-3xl ${data.condition.color} drop-shadow-lg mb-1 float-animation"></i>
-          <span class="text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}</span>
+          <i class="fa-solid ${data.condition.icon} text-3xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"></i>
+          <span class="text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}</span>
         </div>
       </div>
       
       <div class="space-y-3 mt-auto">
-         <div class="flex justify-between items-end bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 cursor-pointer hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${data.totalPrecip})'>
-          <span class="text-xs text-slate-400 font-medium group-hover/btn:text-white transition-colors">선택 기간 강수량 <i class="fa-solid fa-chevron-right text-[9px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
+         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${data.totalPrecip})'>
+          <span class="text-xs text-slate-500 md:text-slate-400 font-medium group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">선택 기간 강수량 <i class="fa-solid fa-chevron-right text-[9px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
-             <span class="text-2xl font-bold text-blue-400 drop-shadow">${data.totalPrecip}</span>
-             <span class="text-xs text-slate-500 font-bold">mm</span>
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}</span>
+             <span class="text-xs text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
         </div>
         
-        <div class="flex justify-between items-end px-2 mt-1 cursor-pointer hover:bg-slate-800/60 rounded-lg p-1 -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon})'>
-          <span class="text-xs text-slate-400 flex items-center gap-1 group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-500 group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover/btn2:opacity-100"></i></span>
+        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon})'>
+          <span class="text-xs text-slate-500 md:text-slate-400 flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover/btn2:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
-             <span class="text-lg font-bold text-amber-300 drop-shadow">${data.next24hPrecip}</span>
-             <span class="text-[10px] text-slate-500 font-bold">mm</span>
+             <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next24hPrecip}</span>
+             <span class="text-[10px] text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
         </div>
       </div>
@@ -203,16 +203,16 @@ function initSkeleton() {
   // 20개의 스켈레톤 UI 생성
   for(let i=0; i<20; i++) {
     grid.innerHTML += `
-      <div class="weather-card skeleton-card rounded-2xl p-5 flex flex-col justify-between h-48 bg-slate-800/50 border border-slate-700/30">
+      <div class="weather-card skeleton-card rounded-2xl p-5 flex flex-col justify-between h-48 bg-[#FBFBFB] md:bg-slate-800/50 border md:border-slate-700/30">
         <div class="flex justify-between">
-          <div class="h-6 bg-slate-700/80 rounded w-16 mb-4"></div>
-          <div class="h-10 w-10 bg-slate-700/80 rounded-full"></div>
+          <div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div>
+          <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div>
         </div>
         <div class="space-y-4">
-           <div class="h-12 bg-slate-700/60 rounded-lg w-full"></div>
+           <div class="h-12 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
            <div class="flex justify-between">
-             <div class="h-4 bg-slate-700/60 rounded w-20"></div>
-             <div class="h-5 bg-slate-700/60 rounded w-12"></div>
+             <div class="h-4 bg-slate-100 md:bg-slate-700/60 rounded w-20"></div>
+             <div class="h-5 bg-slate-100 md:bg-slate-700/60 rounded w-12"></div>
            </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ function initSkeleton() {
 
 // 4. 모달 관련 전역 함수
 window.showHistoryModal = function(name, dates, precips, total) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-400"></i> ${name} 과거 강수내역`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"></i> ${name} 과거 강수내역`;
   document.getElementById('modal-total').innerText = total;
   
   const tbody = document.getElementById('modal-tbody');
@@ -230,9 +230,9 @@ window.showHistoryModal = function(name, dates, precips, total) {
   dates.forEach((date, i) => {
     const val = precips[i] !== null ? Number(precips[i]).toFixed(1) : '0.0';
     tbody.innerHTML += `
-      <tr class="hover:bg-slate-700/30 transition-colors">
-        <td class="px-4 py-2.5 text-slate-300">${date}</td>
-        <td class="px-4 py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-blue-400 font-bold' : 'text-slate-500'}">${val}</td>
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300">${date}</td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-[#003366] md:text-blue-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${val}</td>
       </tr>
     `;
   });
@@ -240,10 +240,10 @@ window.showHistoryModal = function(name, dates, precips, total) {
 };
 
 window.showFutureModal = async function(name, lat, lon) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-amber-400"></i> ${name} 향후 7일 강수예측`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"></i> ${name} 향후 7일 강수예측`;
   document.getElementById('modal-total').innerText = '-';
   const tbody = document.getElementById('modal-tbody');
-  tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-amber-400/50"></i><br>데이터를 불러오는 중입니다...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-blue-500/50 md:text-amber-400/50"></i><br>데이터를 불러오는 중입니다...</td></tr>`;
   document.getElementById('detail-modal').showModal();
   
   try {
@@ -262,16 +262,16 @@ window.showFutureModal = async function(name, lat, lon) {
       sum += val;
       const valStr = val.toFixed(1);
       tbody.innerHTML += `
-        <tr class="hover:bg-slate-700/30 transition-colors">
-          <td class="px-4 py-2.5 text-slate-300">${date}</td>
-          <td class="px-4 py-2.5 text-right font-mono ${val > 0 ? 'text-amber-400 font-bold' : 'text-slate-500'}">${valStr}</td>
+        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300">${date}</td>
+          <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}</td>
         </tr>
       `;
     });
     document.getElementById('modal-total').innerText = sum.toFixed(1);
     
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-red-400 text-sm">데이터를 불러오지 못했습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-red-500 md:text-red-400 text-sm">데이터를 불러오지 못했습니다.</td></tr>';
     document.getElementById('modal-total').innerText = '0.0';
   }
 };

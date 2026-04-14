@@ -10,29 +10,29 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css?v=20260414_02">
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen">
+<body class="bg-[#FBFBFB] md:bg-slate-900 text-[#1D1D1F] md:text-slate-100 font-sans min-h-screen">
   <!-- 상단 통합 헤더 영역 -->
   <header class="p-4 sm:p-6 pb-2">
-    <div class="bg-slate-800/90 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center whitespace-nowrap">
-        <i class="fa-solid fa-cloud-sun-rain mr-3 text-blue-400"></i> 기상데이터(from Open-Meteo)
+    <div class="bg-white/90 md:bg-slate-800/90 md:backdrop-blur-md p-4 rounded-xl shadow-sm md:shadow-lg border border-[#E5E5E5] md:border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center whitespace-nowrap">
+        <i class="fa-solid fa-cloud-sun-rain mr-3 text-blue-500 md:text-blue-400"></i> 기상데이터(from Open-Meteo)
       </h1>
       
       <div class="flex items-center gap-3 flex-grow md:flex-grow-0 justify-end md:justify-center shrink-0">
-        <label for="date-range" class="font-medium text-slate-300 text-sm hidden sm:block whitespace-nowrap">📅 조회 기간:</label>
+        <label for="date-range" class="font-medium text-[#1D1D1F] md:text-slate-300 text-sm hidden sm:block whitespace-nowrap">📅 조회 기간:</label>
         <div class="relative w-48 sm:w-60">
-          <input type="text" id="date-range" class="bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-sm transition-all shadow-inner" placeholder="날짜 선택...">
-          <i class="fa-regular fa-calendar absolute left-3.5 top-2.5 text-slate-400"></i>
+          <input type="text" id="date-range" class="bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 text-[#1D1D1F] md:text-white rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 md:focus:border-blue-500 w-full text-sm transition-all shadow-inner" placeholder="날짜 선택...">
+          <i class="fa-regular fa-calendar absolute left-3.5 top-2.5 text-blue-500 md:text-slate-400"></i>
         </div>
       </div>
       
       <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-        <div id="loading-indicator" class="flex items-center gap-2 text-blue-400 font-medium text-sm">
+        <div id="loading-indicator" class="flex items-center gap-2 text-blue-500 md:text-blue-400 font-medium text-sm">
           <i class="fa-solid fa-circle-notch fa-spin"></i>
           <span class="hidden sm:inline">로딩중...</span>
         </div>
-        <div id="last-updated" class="text-xs text-slate-400 font-mono bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-700 whitespace-nowrap">최종 갱신: -</div>
-        <button onclick="window.close()" class="bg-slate-800 hover:bg-red-500/20 hover:text-red-400 transition-all text-slate-300 px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-slate-700 hover:border-red-500">
+        <div id="last-updated" class="text-xs text-slate-500 md:text-slate-400 font-mono bg-[#F5F5F7] md:bg-slate-900/50 px-3 py-1.5 rounded-full border border-[#E5E5E5] md:border-slate-700 whitespace-nowrap">최종 갱신: -</div>
+        <button onclick="window.close()" class="bg-white md:bg-slate-800 hover:bg-red-50 hover:text-red-500 md:hover:bg-red-500/20 md:hover:text-red-400 transition-all text-[#1D1D1F] md:text-slate-300 px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-[#E5E5E5] md:border-slate-700 md:hover:border-red-500">
           <i class="fa-solid fa-xmark"></i> <span class="hidden sm:inline">닫기</span>
         </button>
       </div>
@@ -41,38 +41,38 @@
 
   <!-- 메인 5x4 Grid 영역 -->
   <main class="p-4 sm:p-6 pt-2 flex-grow">
-    <div id="weather-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
       <!-- Cards will be dynamically inserted here -->
     </div>
   </main>
 
   <!-- 데이터 모달 팝업 -->
-  <dialog id="detail-modal" class="bg-transparent m-auto inset-0 z-50 backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[modalScale_0.2s_ease-out]">
-      <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-        <h3 id="modal-title" class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+  <dialog id="detail-modal" class="bg-transparent m-auto inset-0 z-50 backdrop:bg-black/30 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div class="bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl w-full max-w-sm overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 id="modal-title" class="text-lg font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
           <!-- Title inject -->
         </h3>
-        <button onclick="document.getElementById('detail-modal').close()" class="text-slate-400 hover:bg-slate-700 hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+        <button onclick="document.getElementById('detail-modal').close()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
       <div class="p-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
-        <table class="w-full text-sm text-left text-slate-300">
-          <thead class="text-xs text-slate-400 bg-slate-900/50 uppercase">
+        <table class="w-full text-sm text-left text-slate-700 md:text-slate-300">
+          <thead class="text-xs text-slate-500 md:text-slate-400 bg-[#F5F5F7] md:bg-slate-900/50 uppercase">
             <tr>
               <th scope="col" class="px-4 py-3 rounded-tl-lg">날짜</th>
               <th scope="col" class="px-4 py-3 text-right rounded-tr-lg">강수량 (mm)</th>
             </tr>
           </thead>
-          <tbody id="modal-tbody" class="divide-y divide-slate-700/50 flex-col">
+          <tbody id="modal-tbody" class="divide-y divide-[#E5E5E5] md:divide-slate-700/50 flex-col">
             <!-- Rows inject -->
           </tbody>
         </table>
       </div>
-      <div class="p-4 bg-slate-900/80 border-t border-slate-700 flex justify-between items-center">
+      <div class="p-4 bg-[#F8F8F8] md:bg-slate-900/80 border-t border-[#E5E5E5] md:border-slate-700 flex justify-between items-center">
         <div class="text-xs text-slate-500"><i class="fa-solid fa-circle-info"></i> Open-Meteo</div>
-        <div class="text-sm font-bold text-slate-300">합계: <span id="modal-total" class="text-lg text-blue-400 ml-1">0.0</span> <span class="text-[10px] text-slate-500 font-normal">mm</span></div>
+        <div class="text-sm font-bold text-[#1D1D1F] md:text-slate-300">합계: <span id="modal-total" class="text-lg text-[#003366] md:text-blue-400 ml-1">0.0</span> <span class="text-[10px] text-slate-500 font-normal">mm</span></div>
       </div>
     </div>
   </dialog>
@@ -84,7 +84,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-  <script src="./app.js?v=20260414_02"></script>
+  <script src="./app.js?v=20260414_03"></script>
   <style>
     .shimmer-effect {
       animation: shimmer 2s infinite linear;
