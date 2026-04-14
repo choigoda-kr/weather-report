@@ -1,5 +1,9 @@
-// 1. 16개 지점 데이터 셋 구축
+// 1. 20개 지점 데이터 셋 구축 (광역 4개 신규 + 기존 16개 유지)
 const locations = [
+  { id: 'seoul', name: '서울', lat: 37.5669, lon: 126.9786 },
+  { id: 'gyeongg_north', name: '경기북부', lat: 37.749633, lon: 127.071114 },
+  { id: 'gyeongg_south', name: '경기남부', lat: 37.288951, lon: 127.053747 },
+  { id: 'incheon', name: '인천', lat: 37.456060, lon: 126.705177 },
   { id: 'yeoju', name: '여주', lat: 37.2982, lon: 127.6371 },
   { id: 'icheon', name: '이천', lat: 37.2723, lon: 127.4350 },
   { id: 'yangpyeong', name: '양평', lat: 37.4913, lon: 127.4876 },
@@ -12,7 +16,7 @@ const locations = [
   { id: 'paju', name: '파주', lat: 37.7599, lon: 126.7798 },
   { id: 'goyang', name: '고양', lat: 37.6584, lon: 126.8320 },
   { id: 'ganghwa', name: '강화', lat: 37.7466, lon: 126.4880 },
-  { id: 'ongjin', name: '옹진', lat: 37.4465, lon: 126.1681 }, // 백령/연평 등 특정 좌표가 있다면 추후 수정
+  { id: 'ongjin', name: '옹진', lat: 37.4465, lon: 126.1681 },
   { id: 'gimpo', name: '김포', lat: 37.6152, lon: 126.7156 },
   { id: 'pyeongtaek', name: '평택', lat: 36.9921, lon: 127.1129 },
   { id: 'anseong', name: '안성', lat: 37.0080, lon: 127.2758 }
@@ -194,8 +198,8 @@ function renderCards(dataArray) {
 function initSkeleton() {
   const grid = document.getElementById('weather-grid');
   grid.innerHTML = '';
-  // 16개의 스켈레톤 UI 생성
-  for(let i=0; i<16; i++) {
+  // 20개의 스켈레톤 UI 생성
+  for(let i=0; i<20; i++) {
     grid.innerHTML += `
       <div class="weather-card skeleton-card rounded-2xl p-5 flex flex-col justify-between h-48 bg-slate-800/50 border border-slate-700/30">
         <div class="flex justify-between">
