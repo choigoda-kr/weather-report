@@ -42,7 +42,7 @@ function getWeatherCondition(code) {
 // 2. Fetch 및 Mapping 로직 구조화
 async function fetchWeatherData(startDateStr, endDateStr) {
   const CACHE_TTL = 60 * 60 * 1000; // 60분 TTL
-  const cacheKey = `weather_cache_${startDateStr}_${endDateStr}`;
+  const cacheKey = `weather_data_v2_${startDateStr}_${endDateStr}`;
   const cached = sessionStorage.getItem(cacheKey);
 
   if (cached) {
