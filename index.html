@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css?v=20260414_04">
+  <link rel="stylesheet" href="./style.css?v=20260414_05">
 </head>
 <body class="bg-[#FBFBFB] md:bg-slate-900 text-[#1D1D1F] md:text-slate-100 font-sans min-h-screen">
   <!-- 상단 통합 헤더 영역 -->
@@ -18,10 +18,10 @@
         <i class="fa-solid fa-cloud-sun-rain mr-3 text-blue-500 md:text-blue-400"></i> 기상데이터(from Open-Meteo)
       </h1>
       
-      <div class="flex items-center gap-3 flex-grow md:flex-grow-0 justify-end md:justify-center shrink-0">
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-end md:justify-center shrink-0">
         <label for="date-range" class="font-medium text-[#1D1D1F] md:text-slate-300 text-sm hidden sm:block whitespace-nowrap">📅 조회 기간:</label>
-        <div class="relative w-48 sm:w-60">
-          <input type="text" id="date-range" class="bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 text-[#1D1D1F] md:text-white rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 md:focus:border-blue-500 w-full text-sm transition-all shadow-inner" placeholder="날짜 선택...">
+        <div class="relative w-full sm:w-60">
+          <input type="text" id="date-range" class="bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 text-[#1D1D1F] md:text-white rounded-lg px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 md:focus:border-blue-500 w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal transition-all shadow-inner" placeholder="날짜 선택...">
           <i class="fa-regular fa-calendar absolute left-3.5 top-2.5 text-blue-500 md:text-slate-400"></i>
         </div>
       </div>
@@ -84,7 +84,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-  <script src="./app.js?v=20260414_04"></script>
+  <script src="./app.js?v=20260414_05"></script>
   <style>
     .shimmer-effect {
       animation: shimmer 2s infinite linear;
