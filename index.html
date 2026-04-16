@@ -79,28 +79,29 @@
     </div>
   </dialog>
 
-  <!-- 지도 모달 팝업 -->
-  <dialog id="map-modal" class="bg-transparent m-auto inset-0 z-50 backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-3 sm:p-4">
-    <div class="map-modal-inner bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] md:shadow-2xl w-full max-w-xl overflow-hidden animate-[modalScale_0.2s_ease-out]">
-      <!-- 모달 헤더 -->
-      <div class="px-4 py-3 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
-        <h3 id="map-modal-title" class="text-base font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
-          <i class="fa-solid fa-map-location-dot text-emerald-500 md:text-emerald-400"></i>
+  <!-- 지도 모달 팝업 (전체화면 Full-Screen) -->
+  <dialog id="map-modal" class="bg-transparent p-0 m-0 w-screen h-screen max-w-none max-h-none backdrop:bg-black/60 backdrop:backdrop-blur-sm">
+    <div class="map-modal-inner">
+      <!-- 오버레이 헤더 (지도 위에 float) -->
+      <div class="absolute top-0 left-0 right-0 z-[1000] px-4 py-3 flex justify-between items-center bg-black/55 backdrop-blur-sm border-b border-white/10">
+        <h3 id="map-modal-title" class="text-base font-bold text-white tracking-tight flex items-center gap-2 drop-shadow">
+          <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
           <span id="map-modal-title-text">관측 지점 위치</span>
         </h3>
-        <button id="map-modal-close-btn" onclick="closeMapModal()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+        <button id="map-modal-close-btn" onclick="closeMapModal()" class="text-white/80 hover:bg-red-500 hover:text-white transition-all w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border border-white/20 hover:border-red-500">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
-      <!-- 지도 컨테이너 -->
+      <!-- 지도 컨테이너 (전체 화면 채움) -->
       <div id="map-container" class="w-full map-container-height"></div>
-      <!-- 모달 하단 정보 -->
-      <div class="px-4 py-2.5 bg-[#F8F8F8] md:bg-slate-900/80 border-t border-[#E5E5E5] md:border-slate-700 flex justify-between items-center">
-        <div class="text-xs text-slate-500 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> OpenStreetMap</div>
-        <div id="map-modal-info" class="text-xs text-slate-500 md:text-slate-400 font-mono"></div>
+      <!-- 오버레이 푸터 (지도 위에 float) -->
+      <div class="absolute bottom-0 left-0 right-0 z-[1000] px-4 py-2 flex justify-between items-center bg-black/55 backdrop-blur-sm border-t border-white/10">
+        <div class="text-xs text-white/60 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> OpenStreetMap</div>
+        <div id="map-modal-info" class="text-xs text-white/80 font-mono"></div>
       </div>
     </div>
   </dialog>
+
 
   <!-- 데이터 출처 Footer -->
   <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">

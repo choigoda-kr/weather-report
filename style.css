@@ -133,24 +133,34 @@ body {
 }
 
 /* ============================================
-   지도 모달 전용 스타일
+   지도 모달 전용 스타일 (전체화면 Full-Screen)
    ============================================ */
 
-/* 지도 컨테이너 높이 */
-.map-container-height {
-  height: 400px;
-}
-@media (max-width: 640px) {
-  .map-container-height {
-    height: 55vw;
-    min-height: 220px;
-  }
+/* dialog 브라우저 기본값 강제 오버라이드 — 전체화면 */
+#map-modal {
+  width: 100vw;
+  height: 100dvh; /* dvh: 모바일 주소표시줄 고려한 동적 뷰포트 높이 */
+  max-width: 100vw;
+  max-height: 100dvh;
+  padding: 0;
+  margin: 0;
+  border: none;
+  overflow: hidden;
 }
 
-/* 지도 모달 내부 — 최대 너비 반응형 보정 */
+/* 모달 내부 컨테이너 — 전체 채움 */
 .map-modal-inner {
-  max-height: 90vh;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
 }
+
+/* 지도 컨테이너 — 전체 화면 채움 (고정 높이 제거) */
+.map-container-height {
+  height: 100%;
+}
+
 
 /* Leaflet attribution 텍스트 크기 */
 .leaflet-control-attribution {
