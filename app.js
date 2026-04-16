@@ -379,82 +379,75 @@ window.showMapModal = function(name, lat, lon, condition, temp) {
   // 3. 지도 모달 열기
   document.getElementById('map-modal').showModal();
 
-  // 4. 기존 인스턴스 제거 (중복 초기화 방지)
+  // 4. 기존 인스턴스 제거 (중복 초기화 방지) — showModal() 직후, setTimeout 밖에서 선행 처리
   if (window._leafletMap) {
     try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
     window._leafletMap = null;
   }
 
-  // 5. Leaflet 지도 초기화
-  try {
-    const mapEl = document.getElementById('map-container');
-    mapEl.innerHTML = ''; // 이전 렌더 잔여 제거
+  // 5. 대기 중 로딩 스피너 표시 (300ms 대기 동안 UX 개선)
+  const mapEl = document.getElementById('map-container');
+  mapEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#94a3b8;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"></i>
+      <p style="font-size:12px; font-weight:500;">지도를 불러오는 중...</p>
+    </div>
+  `;
 
-    window._leafletMap = L.map('map-container', {
-      center: [lat, lon],
-      zoom: 11,
-      zoomControl: true,
-      scrollWheelZoom: true
-    });
+  // 6. [핵심 수정] Leaflet 초기화 전체를 setTimeout 300ms 안으로 이동
+  //    showModal()은 동기적으로 open 속성만 추가할 뿐,
+  //    브라우저의 레이아웃(리플로우/페인팅) 완료를 보장하지 않음.
+  //    즉시 초기화 시 map-container의 크기가 0이라 Leaflet 에러 발생.
+  //    300ms 대기로 렌더링 완료 후 초기화하여 근본 해결.
+  setTimeout(() => {
 
-    // OpenStreetMap 타일 레이어
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
-    }).addTo(window._leafletMap);
+    try {
+      mapEl.innerHTML = ''; // 로딩 스피너 제거
 
-    // 커스텀 마커 아이콘 설정
-    const markerIcon = L.divIcon({
-      className: '',
-      html: `<div style="
-        width: 36px; height: 36px;
-        background: #059669;
-        border: 3px solid #fff;
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-        display: flex; align-items: center; justify-content: center;
-      "><span style="transform: rotate(45deg); color: #fff; font-size: 14px;">\u2603</span></div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 36],
-      popupAnchor: [0, -38]
-    });
+      window._leafletMap = L.map('map-container', {
+        center: [lat, lon],
+        zoom: 11,
+        zoomControl: true,
+        scrollWheelZoom: true
+      });
 
-    // 현위 마커 추가 (기본 Leaflet 마커)
-    const marker = L.marker([lat, lon]).addTo(window._leafletMap);
+      // OpenStreetMap 타일 레이어
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+      }).addTo(window._leafletMap);
 
-    // 팝업 내용
-    const popupContent = `
-      <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
-        <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}</div>
-        <div style="font-size: 12px; color: #555; line-height: 1.7;">
-          기상: <b>${condition}</b><br>
-          기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}</b><br>
-          <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</span>
+      // 마커 추가
+      const marker = L.marker([lat, lon]).addTo(window._leafletMap);
+
+      // 팝업 내용 (지점명 · 기상 · 기온 · 좌표)
+      const popupContent = `
+        <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
+          <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}</div>
+          <div style="font-size: 12px; color: #555; line-height: 1.7;">
+            기상: <b>${condition}</b><br>
+            기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}</b><br>
+            <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</span>
+          </div>
         </div>
-      </div>
-    `;
-    marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
+      `;
+      marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
 
-    // 6. 모달 레이아웃 안정화 (dialog에서 탭 숨겨짐 이슈 방지)
-    setTimeout(() => {
-      if (window._leafletMap) {
-        window._leafletMap.invalidateSize();
-        window._leafletMap.setView([lat, lon], 11);
-      }
-    }, 120);
+      // 컨테이너 크기 재계산 (dialog 레이아웃 최종 안정화)
+      window._leafletMap.invalidateSize();
 
-  } catch (err) {
-    // 지도 초기화 실패 시 사용자 친화적 에러 표시
-    console.error('[showMapModal] Leaflet 초기화 실패:', err);
-    const mapEl = document.getElementById('map-container');
-    mapEl.innerHTML = `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
-        <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"></i>
-        <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.</p>
-        <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.</p>
-      </div>
-    `;
-  }
+    } catch (err) {
+      // Leaflet 초기화 실패 시 사용자 친화적 에러 표시
+      console.error('[showMapModal] Leaflet 초기화 실패:', err);
+      mapEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"></i>
+          <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.</p>
+          <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.</p>
+        </div>
+      `;
+    }
+
+  }, 300); // 300ms: <dialog> 렌더링 및 CSS 애니메이션 완료 대기
 };
 
