@@ -131,3 +131,62 @@ body {
     max-width: 100% !important;
   }
 }
+
+/* ============================================
+   지도 모달 전용 스타일
+   ============================================ */
+
+/* 지도 컨테이너 높이 */
+.map-container-height {
+  height: 400px;
+}
+@media (max-width: 640px) {
+  .map-container-height {
+    height: 55vw;
+    min-height: 220px;
+  }
+}
+
+/* 지도 모달 내부 — 최대 너비 반응형 보정 */
+.map-modal-inner {
+  max-height: 90vh;
+}
+
+/* Leaflet attribution 텍스트 크기 */
+.leaflet-control-attribution {
+  font-size: 10px !important;
+}
+
+/* 지도 보기 버튼 (카드 내부) */
+.map-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.map-view-btn:hover {
+  background: rgba(5, 150, 105, 0.18);
+  border-color: rgba(5, 150, 105, 0.5);
+  color: #047857;
+}
+@media (min-width: 768px) {
+  .map-view-btn {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.08);
+    border-color: rgba(52, 211, 153, 0.2);
+  }
+  .map-view-btn:hover {
+    background: rgba(52, 211, 153, 0.18);
+    border-color: rgba(52, 211, 153, 0.45);
+    color: #6ee7b7;
+  }
+}

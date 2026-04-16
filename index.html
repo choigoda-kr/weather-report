@@ -6,6 +6,8 @@
   <title>기상데이터(from Open-Meteo)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- Leaflet.js (지도 연동) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css?v=20260414_05">
@@ -77,6 +79,29 @@
     </div>
   </dialog>
 
+  <!-- 지도 모달 팝업 -->
+  <dialog id="map-modal" class="bg-transparent m-auto inset-0 z-50 backdrop:bg-black/40 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-3 sm:p-4">
+    <div class="map-modal-inner bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] md:shadow-2xl w-full max-w-xl overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <!-- 모달 헤더 -->
+      <div class="px-4 py-3 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 id="map-modal-title" class="text-base font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <i class="fa-solid fa-map-location-dot text-emerald-500 md:text-emerald-400"></i>
+          <span id="map-modal-title-text">관측 지점 위치</span>
+        </h3>
+        <button id="map-modal-close-btn" onclick="closeMapModal()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <!-- 지도 컨테이너 -->
+      <div id="map-container" class="w-full map-container-height"></div>
+      <!-- 모달 하단 정보 -->
+      <div class="px-4 py-2.5 bg-[#F8F8F8] md:bg-slate-900/80 border-t border-[#E5E5E5] md:border-slate-700 flex justify-between items-center">
+        <div class="text-xs text-slate-500 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> OpenStreetMap</div>
+        <div id="map-modal-info" class="text-xs text-slate-500 md:text-slate-400 font-mono"></div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- 데이터 출처 Footer -->
   <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">
     <i class="fa-solid fa-circle-info"></i> 데이터 출처: Open-Meteo (기상청 및 글로벌 기상 모델 혼합 적용)
@@ -84,7 +109,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-  <script src="./app.js?v=20260414_05"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN2GqnI=" crossorigin=""></script>
+  <script src="./app.js?v=20260416_map"></script>
   <style>
     .shimmer-effect {
       animation: shimmer 2s infinite linear;

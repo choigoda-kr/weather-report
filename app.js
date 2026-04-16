@@ -196,6 +196,12 @@ function renderCards(dataArray) {
              <span class="text-[10px] text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
         </div>
+
+        <div class="flex justify-end mt-1.5">
+          <button class="map-view-btn" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
+            <i class="fa-solid fa-map-location-dot"></i> 지도 보기
+          </button>
+        </div>
       </div>
     `;
     
@@ -334,3 +340,121 @@ document.addEventListener('DOMContentLoaded', () => {
   // 최초 로딩 시 API Call
   fetchWeatherData(currentStart, currentEnd).then(renderCards);
 });
+
+// ==========================================================
+// 5. 지도 모달 제어 함수 (Leaflet.js 연동)
+// ==========================================================
+
+/** 지도 모달 닫기 */
+window.closeMapModal = function() {
+  const modal = document.getElementById('map-modal');
+  modal.close();
+  // 닫기 후 인스턴스 정리 (메모리 누수 방지)
+  if (window._leafletMap) {
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+};
+
+/**
+ * 지도 모달 열기
+ * @param {string} name  - 지점명
+ * @param {number} lat   - 위도
+ * @param {number} lon   - 경도
+ * @param {string} condition - 기상 텍스트 (맥음, 비 등)
+ * @param {string} temp  - 현재 기온
+ */
+window.showMapModal = function(name, lat, lon, condition, temp) {
+
+  // 1. 좌표 유효성 검사
+  if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
+    alert(`[불러오기 실패] ${name} 지점의 위치 좌표가 없어 지도를 표시할 수 없습니다.`);
+    return;
+  }
+
+  // 2. 모달 타이틀 갱신
+  document.getElementById('map-modal-title-text').textContent = `${name} 위치 지도`;
+  document.getElementById('map-modal-info').textContent = `${condition} | ${temp !== '-' ? temp + '°C' : '-'} | ${lat.toFixed(4)}°N  ${lon.toFixed(4)}°E`;
+
+  // 3. 지도 모달 열기
+  document.getElementById('map-modal').showModal();
+
+  // 4. 기존 인스턴스 제거 (중복 초기화 방지)
+  if (window._leafletMap) {
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+
+  // 5. Leaflet 지도 초기화
+  try {
+    const mapEl = document.getElementById('map-container');
+    mapEl.innerHTML = ''; // 이전 렌더 잔여 제거
+
+    window._leafletMap = L.map('map-container', {
+      center: [lat, lon],
+      zoom: 11,
+      zoomControl: true,
+      scrollWheelZoom: true
+    });
+
+    // OpenStreetMap 타일 레이어
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'
+    }).addTo(window._leafletMap);
+
+    // 커스텀 마커 아이콘 설정
+    const markerIcon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width: 36px; height: 36px;
+        background: #059669;
+        border: 3px solid #fff;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        display: flex; align-items: center; justify-content: center;
+      "><span style="transform: rotate(45deg); color: #fff; font-size: 14px;">\u2603</span></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor: [0, -38]
+    });
+
+    // 현위 마커 추가 (기본 Leaflet 마커)
+    const marker = L.marker([lat, lon]).addTo(window._leafletMap);
+
+    // 팝업 내용
+    const popupContent = `
+      <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
+        <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}</div>
+        <div style="font-size: 12px; color: #555; line-height: 1.7;">
+          기상: <b>${condition}</b><br>
+          기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}</b><br>
+          <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</span>
+        </div>
+      </div>
+    `;
+    marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
+
+    // 6. 모달 레이아웃 안정화 (dialog에서 탭 숨겨짐 이슈 방지)
+    setTimeout(() => {
+      if (window._leafletMap) {
+        window._leafletMap.invalidateSize();
+        window._leafletMap.setView([lat, lon], 11);
+      }
+    }, 120);
+
+  } catch (err) {
+    // 지도 초기화 실패 시 사용자 친화적 에러 표시
+    console.error('[showMapModal] Leaflet 초기화 실패:', err);
+    const mapEl = document.getElementById('map-container');
+    mapEl.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"></i>
+        <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.</p>
+        <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.</p>
+      </div>
+    `;
+  }
+};
+
