@@ -121,7 +121,9 @@ async function fetchWeatherData(startDateStr, endDateStr) {
         totalPrecip,
         next24hPrecip,
         dailyDates: dailyPrecips.length ? data.daily.time : [],
-        dailyPrecips: dailyPrecips
+        dailyPrecips: dailyPrecips,
+        hourlyTimes: data.hourly?.time || [],
+        hourlyPrecips: data.hourly?.precipitation || []
       };
     });
 
@@ -169,38 +171,40 @@ function renderCards(dataArray) {
     innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
     
     innerContent.innerHTML = `
-      <div class="flex justify-between items-start mb-2">
-        <div class="flex items-center gap-2">
-          <h2 class="text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90">${data.name}</h2>
-          <span class="text-lg font-bold text-slate-700 md:text-slate-200 mt-0.5 tracking-tight">${data.currentTemp} <span class="text-xs font-normal">°C</span></span>
+      <div class="flex justify-between items-center mb-4">
+        <!-- 좌측: 지점명 + 지도 보기 버튼 -->
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">${data.name}</h2>
+          <button class="map-view-btn shrink-0" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
+            <i class="fa-solid fa-map-location-dot"></i> 지도 보기
+          </button>
         </div>
-        <div class="flex flex-col items-end">
-          <i class="fa-solid ${data.condition.icon} text-3xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"></i>
-          <span class="text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}</span>
+        
+        <!-- 우측: 기온 + 날씨 아이콘 세트 -->
+        <div class="flex items-center gap-3 sm:gap-4">
+          <span class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-sm sm:text-base font-normal">°C</span></span>
+          <div class="flex flex-col items-center shrink-0">
+            <i class="fa-solid ${data.condition.icon} text-3xl sm:text-4xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"></i>
+            <span class="text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}</span>
+          </div>
         </div>
       </div>
       
       <div class="space-y-3 mt-auto">
-         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${data.totalPrecip})'>
-          <span class="text-xs text-slate-500 md:text-slate-400 font-medium group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">선택 기간 강수량 <i class="fa-solid fa-chevron-right text-[9px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
+         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${data.totalPrecip})'>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">선택 기간 강수량 <i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
              <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}</span>
-             <span class="text-xs text-slate-400 md:text-slate-500 font-bold">mm</span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
         </div>
         
         <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon})'>
-          <span class="text-xs text-slate-500 md:text-slate-400 flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[9px] opacity-50 group-hover/btn2:opacity-100"></i></span>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
-             <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next24hPrecip}</span>
-             <span class="text-[10px] text-slate-400 md:text-slate-500 font-bold">mm</span>
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next24hPrecip}</span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
-        </div>
-
-        <div class="flex justify-end mt-1.5">
-          <button class="map-view-btn" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
-            <i class="fa-solid fa-map-location-dot"></i> 지도 보기
-          </button>
         </div>
       </div>
     `;
@@ -221,12 +225,9 @@ function initSkeleton() {
           <div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div>
           <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div>
         </div>
-        <div class="space-y-4">
-           <div class="h-12 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
-           <div class="flex justify-between">
-             <div class="h-4 bg-slate-100 md:bg-slate-700/60 rounded w-20"></div>
-             <div class="h-5 bg-slate-100 md:bg-slate-700/60 rounded w-12"></div>
-           </div>
+        <div class="space-y-3 mt-auto">
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
         </div>
       </div>
     `;
@@ -234,7 +235,68 @@ function initSkeleton() {
 }
 
 // 4. 모달 관련 전역 함수
-window.showHistoryModal = function(name, dates, precips, total) {
+window.toggleHourlyData = function(dateIndex) {
+  const el = document.getElementById(`hourly-row-${dateIndex}`);
+  if(el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+};
+
+function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
+  const barColor = colorTheme === 'future' ? 'bg-amber-400' : 'bg-blue-400';
+  const textColor = colorTheme === 'future' ? 'text-amber-400' : 'text-blue-400';
+  
+  const hoursData = [];
+  let maxPrecip = -1;
+  let maxIdx = -1;
+  
+  for(let i=0; i<hourlyTimes.length; i++) {
+    if(hourlyTimes[i].startsWith(dateStr)) {
+      const val = hourlyPrecips[i] || 0;
+      hoursData.push({ time: hourlyTimes[i], val });
+      if(val > maxPrecip) { maxPrecip = val; maxIdx = hoursData.length - 1; }
+    }
+  }
+  
+  if(hoursData.length === 0) {
+    return `<div class="text-center text-xs text-slate-400 py-2">시간별 데이터가 없습니다.</div>`;
+  }
+  
+  let chartHtml = `<div class="flex overflow-x-auto gap-2 pb-2 pt-1 custom-scrollbar-hide snap-x">`;
+  hoursData.forEach((d, idx) => {
+    const isMax = (idx === maxIdx && maxPrecip > 0);
+    const hColor = isMax ? 'bg-red-500' : barColor;
+    const tColor = isMax ? 'text-red-500 font-bold' : 'text-slate-400 md:text-slate-500';
+    const valColor = isMax ? 'text-red-500 font-bold' : 'text-slate-600 md:text-slate-400';
+    
+    let hPx = 2;
+    if(maxPrecip > 0 && d.val > 0) {
+      hPx = Math.max(2, Math.floor((d.val / maxPrecip) * 36)); 
+    }
+    
+    const hourStr = d.time.substring(11, 16); 
+    const valStr = d.val > 0 ? d.val.toFixed(1) : '0';
+    
+    chartHtml += `
+      <div class="flex flex-col items-center justify-end min-w-[36px] snap-center">
+        <span class="text-[10px] mb-1 ${valColor}">${valStr}</span>
+        <div class="w-4 rounded-t-sm ${hColor}" style="height: ${hPx}px; transition: height 0.3s ease;"></div>
+        <span class="text-[9px] mt-1 ${tColor}">${hourStr}</span>
+      </div>
+    `;
+  });
+  chartHtml += `</div>`;
+  
+  if(maxPrecip > 0) {
+    const peakTime = hoursData[maxIdx].time.substring(11, 16);
+    chartHtml = `<div class="text-[11px] mb-2 text-red-500 font-bold tracking-tight"><i class="fa-solid fa-triangle-exclamation"></i> ${peakTime} 피크 집중 강수 (${maxPrecip.toFixed(1)}mm)</div>` + chartHtml;
+  }
+  return chartHtml;
+}
+
+window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, total) {
   document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"></i> ${name} 과거 강수내역`;
   document.getElementById('modal-total').innerText = total;
   
@@ -243,9 +305,16 @@ window.showHistoryModal = function(name, dates, precips, total) {
   dates.forEach((date, i) => {
     const val = precips[i] !== null ? Number(precips[i]).toFixed(1) : '0.0';
     tbody.innerHTML += `
-      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
-        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300">${date}</td>
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('hist-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"></i> ${date}
+        </td>
         <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-[#003366] md:text-blue-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${val}</td>
+      </tr>
+      <tr id="hourly-row-hist-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'history')}
+        </td>
       </tr>
     `;
   });
@@ -260,24 +329,47 @@ window.showFutureModal = async function(name, lat, lon) {
   document.getElementById('detail-modal').showModal();
   
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&timezone=Asia%2FSeoul&forecast_days=7`;
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('API Error');
-    const data = await res.json();
+    const cacheKey = `future_weather_${lat}_${lon}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    let data;
+    
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed.timestamp < 60 * 60 * 1000) {
+        data = parsed.payload;
+      }
+    }
+    
+    if (!data) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&hourly=precipitation&timezone=Asia%2FSeoul&forecast_days=7`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('API Error');
+      data = await res.json();
+      sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), payload: data }));
+    }
     
     tbody.innerHTML = '';
     let sum = 0;
     const dates = data.daily.time;
     const precips = data.daily.precipitation_sum;
+    const hourlyTimes = data.hourly?.time || [];
+    const hourlyPrecips = data.hourly?.precipitation || [];
     
     dates.forEach((date, i) => {
       const val = precips[i] !== null ? Number(precips[i]) : 0;
       sum += val;
       const valStr = val.toFixed(1);
       tbody.innerHTML += `
-        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
-          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300">${date}</td>
+        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
+          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"></i> ${date}
+          </td>
           <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}</td>
+        </tr>
+        <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+          <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+            ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future')}
+          </td>
         </tr>
       `;
     });

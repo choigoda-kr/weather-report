@@ -200,3 +200,12 @@ body {
     color: #6ee7b7;
   }
 }
+
+/* Horizontal Scrollbar Hide */
+.custom-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.custom-scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
