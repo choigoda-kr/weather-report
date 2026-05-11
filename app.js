@@ -39,6 +39,36 @@ function getWeatherCondition(code) {
   }
 }
 
+// 전역 Toast 메시지 함수
+window.showToast = function(message, isError = false) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  const bgColor = isError ? 'bg-red-500' : 'bg-slate-800 md:bg-blue-600';
+  const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-info"></i>';
+  
+  toast.className = `flex items-center gap-2 px-4 py-3 text-white text-sm font-medium rounded shadow-lg transition-all duration-300 transform translate-y-4 opacity-0 ${bgColor}`;
+  toast.innerHTML = `${icon} <span>${message}</span>`;
+  
+  container.appendChild(toast);
+  
+  // 페이드인 애니메이션
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-4', 'opacity-0');
+  });
+  
+  // 3초 후 페이드아웃 및 제거
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      if(container.contains(toast)) {
+        container.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+};
+
 // 2. Fetch 및 Mapping 로직 구조화
 async function fetchWeatherData(startDateStr, endDateStr) {
   const CACHE_TTL = 60 * 60 * 1000; // 60분 TTL
@@ -62,12 +92,31 @@ async function fetchWeatherData(startDateStr, endDateStr) {
     const lats = locations.map(l => l.lat).join(',');
     const lons = locations.map(l => l.lon).join(',');
     
-    // Batch Request URL 생성
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${endDateStr}`;
+    // API 요청 종료일을 강제로 오늘 + 7일로 확장
+    const todayDate = new Date();
+    const offset = todayDate.getTimezoneOffset() * 60000;
+    const todayIso = (new Date(todayDate - offset)).toISOString().split('T')[0];
+    
+    const futureDate = new Date(todayDate);
+    futureDate.setDate(futureDate.getDate() + 7);
+    const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
+    
+    // Batch Request URL 생성 (past_days 완전 삭제)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${futureIso}`;
     
     console.log('Fetching Open-Meteo Data...');
     const res = await fetch(url);
-    if (!res.ok) throw new Error('API Request Failed');
+    if (!res.ok) {
+      // 에러 발생 시 상세 로깅 처리
+      const errText = await res.text();
+      console.error('\n[Open-Meteo API Error Details]');
+      console.error(`- Status Code: ${res.status}`);
+      console.error(`- Request URL: ${url}`);
+      console.error(`- Request Start Date: ${startDateStr}`);
+      console.error(`- Request End Date: ${futureIso}`);
+      console.error(`- Response Body: ${errText}\n`);
+      throw new Error(`API Request Failed with status ${res.status}`);
+    }
     
     let results = await res.json();
     
@@ -87,29 +136,47 @@ async function fetchWeatherData(startDateStr, endDateStr) {
       // 현재 기온 추출 및 가공
       const currentTemp = data.current?.temperature_2m !== undefined ? data.current.temperature_2m.toFixed(1) : '-';
       
-      // 누적 강수량 (기간 내 전체 합산)
-      const dailyPrecips = data.daily?.precipitation_sum || [];
-      const totalPrecip = dailyPrecips.reduce((sum, val) => sum + (val || 0), 0).toFixed(1);
+      // 기간별 강수량 합산 분리 (과거/미래)
+      const dailyDates = [];
+      const dailyPrecips = [];
+      let historyTotal = 0;
       
-      // 향후 24시간 예상 강수량 (현재 시간 기준 앞으로 24개 인덱스 추출)
+      const futureDates = [];
+      const futurePrecips = [];
+      
+      if (data.daily && data.daily.time) {
+        data.daily.time.forEach((t, i) => {
+          const p = data.daily.precipitation_sum[i] || 0;
+          
+          // 1. 선택 기간 강수량 (과거/현재 조회용)
+          if (t >= startDateStr && t <= endDateStr) {
+            historyTotal += p;
+            dailyDates.push(t);
+            dailyPrecips.push(p);
+          }
+          
+          // 2. 향후 7일 강수량 (모달 예보용, 오늘 ~ +6일)
+          if (t >= todayIso && futureDates.length < 7) {
+            futureDates.push(t);
+            futurePrecips.push(p);
+          }
+        });
+      }
+      const totalPrecip = historyTotal.toFixed(1);
+      
+      // 향후 24시간 예상 강수량 (API current.time 기준)
       let next24hPrecip = 0;
-      if (data.hourly && data.hourly.time && data.hourly.precipitation) {
-        // YYYY-MM-DDTHH:00 형태로 현재 시간 문자열 생성 (로컬 시간 기준)
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const nowIso = `${yyyy}-${mm}-${dd}T${hh}:00`;
-        
-        const currentIndex = data.hourly.time.findIndex(t => t === nowIso);
+      if (data.hourly && data.hourly.time && data.hourly.precipitation && data.current?.time) {
+        // 서버에서 응답받은 현재 시간(KST)을 그대로 사용하여 오차 원천 차단
+        // current.time에 포함될 수 있는 분(minute) 단위를 무시하고 정각(00)으로 변환하여 매칭
+        const nowHour = data.current.time.substring(0, 13) + ":00"; 
+        const currentIndex = data.hourly.time.findIndex(t => t === nowHour);
         
         if (currentIndex !== -1) {
-          // 일치하는 현재 시간을 찾은 경우, 기준 인덱스부터 "앞으로 24시간" slice
           const upcoming = data.hourly.precipitation.slice(currentIndex, currentIndex + 24);
           next24hPrecip = upcoming.reduce((sum, val) => sum + (val || 0), 0).toFixed(1);
         } else {
-          // 예외 상황: 정확한 시간축을 찾지 못한 경우 방어코드 (첫번째 항목부터 24개 임시 계산)
+          // 예외 상황 방어 코드
           next24hPrecip = (data.hourly.precipitation.slice(0, 24).reduce((sum, val) => sum + (val || 0), 0)).toFixed(1);
         }
       }
@@ -120,8 +187,10 @@ async function fetchWeatherData(startDateStr, endDateStr) {
         currentTemp,
         totalPrecip,
         next24hPrecip,
-        dailyDates: dailyPrecips.length ? data.daily.time : [],
+        dailyDates: dailyDates,
         dailyPrecips: dailyPrecips,
+        futureDates: futureDates,
+        futurePrecips: futurePrecips,
         hourlyTimes: data.hourly?.time || [],
         hourlyPrecips: data.hourly?.precipitation || []
       };
@@ -139,9 +208,9 @@ async function fetchWeatherData(startDateStr, endDateStr) {
     return processedData;
     
   } catch (error) {
-    console.error('Fetch error:', error);
+    console.error('[Open-Meteo Fetch Exception]', error);
     document.getElementById('loading-indicator').classList.add('hidden');
-    alert('기상 데이터를 불러오는데 실패했습니다.');
+    window.showToast('최근 90일 이내의 데이터만 조회가 가능합니다.', true);
     return null;
   }
 }
@@ -199,7 +268,7 @@ function renderCards(dataArray) {
           </div>
         </div>
         
-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon})'>
+        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
           <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
              <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next24hPrecip}</span>
@@ -321,64 +390,41 @@ window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrec
   document.getElementById('detail-modal').showModal();
 };
 
-window.showFutureModal = async function(name, lat, lon) {
+window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips) {
   document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"></i> ${name} 향후 7일 강수예측`;
-  document.getElementById('modal-total').innerText = '-';
   const tbody = document.getElementById('modal-tbody');
-  tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-blue-500/50 md:text-amber-400/50"></i><br>데이터를 불러오는 중입니다...</td></tr>`;
-  document.getElementById('detail-modal').showModal();
+  tbody.innerHTML = '';
   
-  try {
-    const cacheKey = `future_weather_${lat}_${lon}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    let data;
-    
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed.timestamp < 60 * 60 * 1000) {
-        data = parsed.payload;
-      }
-    }
-    
-    if (!data) {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&hourly=precipitation&timezone=Asia%2FSeoul&forecast_days=7`;
-      const res = await fetch(url);
-      if(!res.ok) throw new Error('API Error');
-      data = await res.json();
-      sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), payload: data }));
-    }
-    
-    tbody.innerHTML = '';
-    let sum = 0;
-    const dates = data.daily.time;
-    const precips = data.daily.precipitation_sum;
-    const hourlyTimes = data.hourly?.time || [];
-    const hourlyPrecips = data.hourly?.precipitation || [];
-    
-    dates.forEach((date, i) => {
-      const val = precips[i] !== null ? Number(precips[i]) : 0;
-      sum += val;
-      const valStr = val.toFixed(1);
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
-          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"></i> ${date}
-          </td>
-          <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}</td>
-        </tr>
-        <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
-          <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
-            ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future')}
-          </td>
-        </tr>
-      `;
-    });
-    document.getElementById('modal-total').innerText = sum.toFixed(1);
-    
-  } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-red-500 md:text-red-400 text-sm">데이터를 불러오지 못했습니다.</td></tr>';
+  let sum = 0;
+  
+  if (!dates || dates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.</td></tr>';
     document.getElementById('modal-total').innerText = '0.0';
+    document.getElementById('detail-modal').showModal();
+    return;
   }
+  
+  dates.forEach((date, i) => {
+    const val = precips[i] !== null ? Number(precips[i]) : 0;
+    sum += val;
+    const valStr = val.toFixed(1);
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"></i> ${date}
+        </td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}</td>
+      </tr>
+      <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future')}
+        </td>
+      </tr>
+    `;
+  });
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
+  document.getElementById('detail-modal').showModal();
 };
 
 // 4. Flatpickr 초기화 및 디바운싱 구동
