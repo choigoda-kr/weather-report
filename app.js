@@ -1,6 +1,6 @@
 // 1. 20개 지점 데이터 셋 구축 (광역 4개 신규 + 기존 16개 유지)
 const locations = [
-  { id: 'seoul', name: '서울', lat: 37.5669, lon: 126.9786 },
+  { id: 'gwacheon', name: '과천', lat: 37.4292, lon: 126.9899 },
   { id: 'gyeongg_north', name: '경기북부', lat: 37.749633, lon: 127.071114 },
   { id: 'gyeongg_south', name: '경기남부', lat: 37.288951, lon: 127.053747 },
   { id: 'incheon', name: '인천', lat: 37.456060, lon: 126.705177 },
@@ -98,7 +98,7 @@ async function fetchWeatherData(startDateStr, endDateStr) {
     const todayIso = (new Date(todayDate - offset)).toISOString().split('T')[0];
     
     const futureDate = new Date(todayDate);
-    futureDate.setDate(futureDate.getDate() + 7);
+    futureDate.setDate(futureDate.getDate() + 11);
     const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
     
     // Batch Request URL 생성 (past_days 완전 삭제)
@@ -155,8 +155,8 @@ async function fetchWeatherData(startDateStr, endDateStr) {
             dailyPrecips.push(p);
           }
           
-          // 2. 향후 7일 강수량 (모달 예보용, 오늘 ~ +6일)
-          if (t >= todayIso && futureDates.length < 7) {
+          // 2. 향후 10일 강수량 (모달 예보용)
+          if (t >= todayIso && futureDates.length < 10) {
             futureDates.push(t);
             futurePrecips.push(p);
           }
@@ -164,29 +164,15 @@ async function fetchWeatherData(startDateStr, endDateStr) {
       }
       const totalPrecip = historyTotal.toFixed(1);
       
-      // 향후 24시간 예상 강수량 (API current.time 기준)
-      let next24hPrecip = 0;
-      if (data.hourly && data.hourly.time && data.hourly.precipitation && data.current?.time) {
-        // 서버에서 응답받은 현재 시간(KST)을 그대로 사용하여 오차 원천 차단
-        // current.time에 포함될 수 있는 분(minute) 단위를 무시하고 정각(00)으로 변환하여 매칭
-        const nowHour = data.current.time.substring(0, 13) + ":00"; 
-        const currentIndex = data.hourly.time.findIndex(t => t === nowHour);
-        
-        if (currentIndex !== -1) {
-          const upcoming = data.hourly.precipitation.slice(currentIndex, currentIndex + 24);
-          next24hPrecip = upcoming.reduce((sum, val) => sum + (val || 0), 0).toFixed(1);
-        } else {
-          // 예외 상황 방어 코드
-          next24hPrecip = (data.hourly.precipitation.slice(0, 24).reduce((sum, val) => sum + (val || 0), 0)).toFixed(1);
-        }
-      }
+      // 향후 10일 예상 강수량 합산
+      const next10dPrecip = futurePrecips.reduce((sum, val) => sum + (val || 0), 0).toFixed(1);
       
       return {
         ...loc,
         condition,
         currentTemp,
         totalPrecip,
-        next24hPrecip,
+        next10dPrecip,
         dailyDates: dailyDates,
         dailyPrecips: dailyPrecips,
         futureDates: futureDates,
@@ -269,9 +255,9 @@ function renderCards(dataArray) {
         </div>
         
         <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 24h 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i></span>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 10일 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
-             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next24hPrecip}</span>
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
              <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
           </div>
         </div>
@@ -391,7 +377,7 @@ window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrec
 };
 
 window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"></i> ${name} 향후 7일 강수예측`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"></i> ${name} 향후 10일 강수예측`;
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
   
