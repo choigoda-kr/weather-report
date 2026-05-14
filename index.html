@@ -101,7 +101,37 @@
       </div>
     </div>
   </dialog>
-
+  <!-- 긴급 호우 알림 모달 팝업 -->
+  <dialog id="emergency-modal" class="bg-transparent m-auto inset-0 z-[2000] backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div class="bg-white border-2 border-red-500 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-red-200 bg-red-50 flex justify-between items-center">
+        <h3 id="emergency-modal-title" class="text-lg font-bold text-red-600 tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('emergency-modal').close()" class="text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-0 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-slate-700">
+          <thead class="text-xs text-slate-500 bg-[#F5F5F7] uppercase sticky top-0 border-b border-[#E5E5E5] z-10">
+            <tr>
+              <th scope="col" class="px-4 py-3">지점명</th>
+              <th scope="col" class="px-4 py-3">예상 날짜</th>
+              <th scope="col" class="px-4 py-3">예상 시간</th>
+              <th scope="col" class="px-4 py-3 text-right">강수량 (mm/h)</th>
+            </tr>
+          </thead>
+          <tbody id="emergency-modal-tbody" class="divide-y divide-[#E5E5E5]">
+            <!-- Rows inject -->
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 bg-[#F8F8F8] border-t border-[#E5E5E5] flex justify-end">
+        <button onclick="document.getElementById('emergency-modal').close()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition-colors">확인</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- 데이터 출처 Footer -->
   <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">

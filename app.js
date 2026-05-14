@@ -70,12 +70,12 @@ window.showToast = function(message, isError = false) {
 };
 
 // 2. Fetch 및 Mapping 로직 구조화
-async function fetchWeatherData(startDateStr, endDateStr) {
+async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
   const CACHE_TTL = 60 * 60 * 1000; // 60분 TTL
   const cacheKey = `weather_data_v2_${startDateStr}_${endDateStr}`;
   const cached = sessionStorage.getItem(cacheKey);
 
-  if (cached) {
+  if (!forceRefresh && cached) {
     const data = JSON.parse(cached);
     if (Date.now() - data.timestamp < CACHE_TTL) {
       console.log('Using cached data for', startDateStr, 'to', endDateStr);
@@ -213,6 +213,9 @@ function renderCards(dataArray) {
   
   if(!dataArray || dataArray.length === 0) return;
 
+  // 긴급 호우 알림 검사 (50mm 이상)
+  checkEmergencyRain(dataArray);
+
   dataArray.forEach(data => {
     const card = document.createElement('div');
     card.className = 'weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group border border-[#EEEEEE] md:border-none shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
@@ -267,6 +270,59 @@ function renderCards(dataArray) {
     card.appendChild(innerContent);
     grid.appendChild(card);
   });
+}
+
+function checkEmergencyRain(dataArray) {
+  const threshold = 50.0;
+  const emergencyLogs = [];
+  const affectedLocations = new Set();
+  const now = Date.now();
+  
+  dataArray.forEach(loc => {
+    if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
+    loc.hourlyTimes.forEach((timeStr, i) => {
+      const precip = loc.hourlyPrecips[i];
+      if (precip >= threshold) {
+        const [datePart, timePart] = timeStr.split('T');
+        const targetTime = new Date(timeStr).getTime();
+        
+        // 과거 데이터 제외 (현재 시각 이후만)
+        if (targetTime >= now) {
+          affectedLocations.add(loc.name);
+          emergencyLogs.push({
+            name: loc.name,
+            date: datePart,
+            time: timePart,
+            precip: precip
+          });
+        }
+      }
+    });
+  });
+  
+  if (emergencyLogs.length > 0) {
+    const locsArray = Array.from(affectedLocations).join(', ');
+    document.getElementById('emergency-modal-title').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 긴급: ${locsArray}에 강한 호우 예상됨`;
+    
+    const tbody = document.getElementById('emergency-modal-tbody');
+    tbody.innerHTML = '';
+    
+    // 시간순 정렬
+    emergencyLogs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    
+    emergencyLogs.forEach(log => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-4 py-3 font-bold text-slate-800">${log.name}</td>
+          <td class="px-4 py-3 text-slate-600">${log.date}</td>
+          <td class="px-4 py-3 text-slate-600">${log.time}</td>
+          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)}</td>
+        </tr>
+      `;
+    });
+    
+    document.getElementById('emergency-modal').showModal();
+  }
 }
 
 function initSkeleton() {
@@ -463,6 +519,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 최초 로딩 시 API Call
   fetchWeatherData(currentStart, currentEnd).then(renderCards);
+
+  // 30분 단위 백그라운드 자동 갱신 (알림 없이 조용히 갱신)
+  setInterval(async () => {
+    console.log('[Auto-Refresh] Fetching latest weather data...');
+    const fp = document.querySelector('#date-range')?._flatpickr;
+    let s = currentStart;
+    let e = currentEnd;
+    if (fp && fp.selectedDates.length === 2) {
+      s = format(fp.selectedDates[0]);
+      e = format(fp.selectedDates[1]);
+    }
+    
+    // 로딩 인디케이터 활성화 (스켈레톤 UI 대신 헤더 인디케이터만 노출)
+    document.getElementById('loading-indicator').classList.remove('hidden');
+    
+    // forceRefresh=true 전달하여 캐시 무시하고 강제 갱신
+    const d = await fetchWeatherData(s, e, true);
+    if (d) renderCards(d);
+  }, 30 * 60 * 1000); // 30분(1800000ms)
 });
 
 // ==========================================================
