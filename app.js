@@ -167,12 +167,49 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
       // 향후 10일 예상 강수량 합산
       const next10dPrecip = futurePrecips.reduce((sum, val) => sum + (val || 0), 0).toFixed(1);
       
+      // 향후 24시간 예상 강수량 합산 및 경보 분석 (현재 시점 기준)
+      const nowMs = Date.now();
+      const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+      let next24hSum = 0;
+      
+      const hourlyTimes = data.hourly?.time || [];
+      const hourlyPrecips = data.hourly?.precipitation || [];
+      
+      const targetPrecips = [];
+      hourlyTimes.forEach((t, i) => {
+        const timeMs = new Date(t).getTime();
+        if (timeMs >= nowMs && timeMs <= next24hMs) {
+          const val = hourlyPrecips[i] || 0;
+          next24hSum += val;
+          targetPrecips.push(val);
+        }
+      });
+      const next24hPrecip = next24hSum.toFixed(1);
+      
+      // Sliding Window 1시간/3시간 경보 판별
+      let alertLevel = 'none';
+      for (let i = 0; i < targetPrecips.length; i++) {
+        const p1 = targetPrecips[i];
+        const p2 = i + 1 < targetPrecips.length ? targetPrecips[i + 1] : 0;
+        const p3 = i + 2 < targetPrecips.length ? targetPrecips[i + 2] : 0;
+        const sum3h = p1 + p2 + p3;
+        
+        if (sum3h >= 90 || p1 >= 50) {
+          alertLevel = 'red';
+          break; // 가장 높은 경보이므로 루프 종료
+        } else if ((sum3h >= 60 || p1 >= 30) && alertLevel !== 'red') {
+          alertLevel = 'orange';
+        }
+      }
+      
       return {
         ...loc,
         condition,
         currentTemp,
         totalPrecip,
+        next24hPrecip,
         next10dPrecip,
+        alertLevel,
         dailyDates: dailyDates,
         dailyPrecips: dailyPrecips,
         futureDates: futureDates,
@@ -217,8 +254,15 @@ function renderCards(dataArray) {
   checkEmergencyRain(dataArray);
 
   dataArray.forEach(data => {
+    let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
+    if (data.alertLevel === 'red') {
+      borderClass = 'border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+    } else if (data.alertLevel === 'orange') {
+      borderClass = 'border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+    }
+
     const card = document.createElement('div');
-    card.className = 'weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group border border-[#EEEEEE] md:border-none shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
+    card.className = `weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group ${borderClass} transition-all duration-300`;
     
     // 장식용 배경 이펙트
     const bgBlur = document.createElement('div');
@@ -257,6 +301,14 @@ function renderCards(dataArray) {
           </div>
         </div>
         
+        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>향후 24시간 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"></i></span>
+          <div class="text-right flex items-baseline gap-1">
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+          </div>
+        </div>
+
         <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
           <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>향후 10일 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
@@ -337,6 +389,7 @@ function initSkeleton() {
           <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div>
         </div>
         <div class="space-y-3 mt-auto">
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
            <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
            <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div>
         </div>
@@ -429,6 +482,50 @@ window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrec
       </tr>
     `;
   });
+  document.getElementById('detail-modal').showModal();
+};
+
+window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock text-sky-500 md:text-sky-400"></i> ${name} 향후 24시간 강수예측`;
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  
+  let sum = 0;
+  const nowMs = Date.now();
+  const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+  
+  let hasData = false;
+  
+  if (hourlyTimes && hourlyTimes.length > 0) {
+    hourlyTimes.forEach((t, i) => {
+      const timeMs = new Date(t).getTime();
+      if (timeMs >= nowMs && timeMs <= next24hMs) {
+        hasData = true;
+        const val = hourlyPrecips[i] !== null && hourlyPrecips[i] !== undefined ? Number(hourlyPrecips[i]) : 0;
+        sum += val;
+        const valStr = val.toFixed(1);
+        
+        // Extract hour string, e.g. "2023-01-01T15:00" -> "15:00"
+        const hourStr = t.substring(11, 16);
+        const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
+        
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+            <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono">
+              <span class="text-xs text-slate-400 mr-2">${dateStr}</span>${hourStr}
+            </td>
+            <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}</td>
+          </tr>
+        `;
+      }
+    });
+  }
+  
+  if (!hasData) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.</td></tr>';
+  }
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
   document.getElementById('detail-modal').showModal();
 };
 
