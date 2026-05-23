@@ -41,7 +41,7 @@
     </div>
   </header>
 
-  <!-- 메인 5x4 Grid 영역 -->
+  <!-- 메인 5x3 Grid 영역 -->
   <main class="p-4 sm:p-6 pt-2 flex-grow">
     <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
       <!-- Cards will be dynamically inserted here -->
@@ -133,6 +133,29 @@
     </div>
   </dialog>
 
+  <!-- 서브지역(읍면동) 모달 팝업 -->
+  <dialog id="sub-region-modal" class="bg-transparent m-auto inset-0 z-[1500] backdrop:bg-black/40 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4 w-full h-full">
+    <div class="bg-[#FBFBFB] md:bg-slate-800 border border-[#E5E5E5] md:border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 sm:p-5 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-white md:bg-slate-800/80">
+        <h3 id="sub-region-modal-title" class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('sub-region-modal').close()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-10 h-10 rounded-full flex items-center justify-center text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 bg-[#F5F5F7] md:bg-slate-900/30">
+        <div id="sub-region-loading" class="flex flex-col items-center justify-center py-20 text-slate-400 gap-4 hidden">
+          <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+          <span class="font-medium">읍·면·동 세부 데이터를 불러오는 중입니다...</span>
+        </div>
+        <div id="sub-region-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+          <!-- Cards inject -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
   <!-- 데이터 출처 Footer -->
   <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">
     <i class="fa-solid fa-circle-info"></i> 데이터 출처: Open-Meteo (기상청 및 글로벌 기상 모델 혼합 적용)
@@ -141,6 +164,7 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./sub_regions.js"></script>
   <script src="./app.js?v=20260416_map"></script>
   <style>
     .shimmer-effect {

@@ -1,18 +1,13 @@
 // 1. 20개 지점 데이터 셋 구축 (광역 4개 신규 + 기존 16개 유지)
 const locations = [
   { id: 'gwacheon', name: '과천', lat: 37.4292, lon: 126.9899 },
-  { id: 'gyeongg_north', name: '경기북부', lat: 37.749633, lon: 127.071114 },
-  { id: 'gyeongg_south', name: '경기남부', lat: 37.288951, lon: 127.053747 },
-  { id: 'incheon', name: '인천', lat: 37.456060, lon: 126.705177 },
   { id: 'yeoju', name: '여주', lat: 37.2982, lon: 127.6371 },
   { id: 'icheon', name: '이천', lat: 37.2723, lon: 127.4350 },
   { id: 'yangpyeong', name: '양평', lat: 37.4913, lon: 127.4876 },
-  { id: 'gwangju', name: '광주', lat: 37.4294, lon: 127.2551 },
   { id: 'hwaseong', name: '화성', lat: 37.2064, lon: 126.8320 },
   { id: 'suwon', name: '수원', lat: 37.2636, lon: 127.0286 },
   { id: 'yeoncheon', name: '연천', lat: 38.0964, lon: 127.0744 },
   { id: 'pocheon', name: '포천', lat: 37.8949, lon: 127.2003 },
-  { id: 'gapyeong', name: '가평', lat: 37.8315, lon: 127.5095 },
   { id: 'paju', name: '파주', lat: 37.7599, lon: 126.7798 },
   { id: 'goyang', name: '고양', lat: 37.6584, lon: 126.8320 },
   { id: 'ganghwa', name: '강화', lat: 37.7466, lon: 126.4880 },
@@ -276,7 +271,9 @@ function renderCards(dataArray) {
       <div class="flex justify-between items-center mb-4">
         <!-- 좌측: 지점명 + 지도 보기 버튼 -->
         <div class="flex items-center gap-3">
-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">${data.name}</h2>
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0 cursor-pointer hover:text-blue-600 md:hover:text-blue-400 transition-colors group/title flex items-center gap-1" onclick='window.openSubRegionModal("${data.id}", "${data.name}")'>
+            ${data.name} <i class="fa-solid fa-circle-chevron-down text-sm opacity-30 group-hover/title:opacity-100 transition-opacity"></i>
+          </h2>
           <button class="map-view-btn shrink-0" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
             <i class="fa-solid fa-map-location-dot"></i> 지도 보기
           </button>
@@ -380,8 +377,8 @@ function checkEmergencyRain(dataArray) {
 function initSkeleton() {
   const grid = document.getElementById('weather-grid');
   grid.innerHTML = '';
-  // 20개의 스켈레톤 UI 생성
-  for(let i=0; i<20; i++) {
+  // 15개의 스켈레톤 UI 생성
+  for(let i=0; i<15; i++) {
     grid.innerHTML += `
       <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none">
         <div class="flex justify-between">
@@ -574,9 +571,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const today = new Date();
   
-  // 기본값: 오늘 기준 최근 7일 (오늘 - 7일 = 지난 일주일간)
+  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-2)
   const defaultStartDate = new Date(today);
-  defaultStartDate.setDate(defaultStartDate.getDate() - 7);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
   
   // 최대 90일(3개월) 이내 제한 설정
   const maxLimitDate = new Date(today);
@@ -636,6 +633,142 @@ document.addEventListener('DOMContentLoaded', () => {
     if (d) renderCards(d);
   }, 30 * 60 * 1000); // 30분(1800000ms)
 });
+
+// ==========================================================
+// 서브지역(읍면동) 데이터 Fetch 및 모달 렌더링
+// ==========================================================
+async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
+  const regions = window.subRegionsData ? window.subRegionsData[cityId] : null;
+  if (!regions || regions.length === 0) {
+    window.showToast(`${cityName}의 세부 지역 데이터가 없습니다.`, true);
+    return null;
+  }
+  
+  const lats = regions.map(l => l.lat).join(',');
+  const lons = regions.map(l => l.lon).join(',');
+  
+  const todayDate = new Date();
+  const offset = todayDate.getTimezoneOffset() * 60000;
+  const todayIso = (new Date(todayDate - offset)).toISOString().split('T')[0];
+  const futureDate = new Date(todayDate);
+  futureDate.setDate(futureDate.getDate() + 11);
+  const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
+  
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${futureIso}`;
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API Error ${res.status}`);
+    let results = await res.json();
+    if (!Array.isArray(results)) results = [results];
+    
+    return regions.map((loc, index) => {
+      const data = results[index] || {};
+      let historyTotal = 0;
+      
+      const futureDates = [];
+      const futurePrecips = [];
+      
+      if (data.daily && data.daily.time) {
+        data.daily.time.forEach((t, i) => {
+          const p = data.daily.precipitation_sum[i] || 0;
+          if (t >= startDateStr && t <= endDateStr) {
+            historyTotal += p;
+          }
+          if (t >= todayIso && futureDates.length < 10) {
+            futureDates.push(t);
+            futurePrecips.push(p);
+          }
+        });
+      }
+      const next10dPrecip = futurePrecips.reduce((sum, val) => sum + (val || 0), 0);
+      
+      const nowMs = Date.now();
+      const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+      let next24hSum = 0;
+      
+      const hourlyTimes = data.hourly?.time || [];
+      const hourlyPrecips = data.hourly?.precipitation || [];
+      hourlyTimes.forEach((t, i) => {
+        const timeMs = new Date(t).getTime();
+        if (timeMs >= nowMs && timeMs <= next24hMs) {
+          next24hSum += (hourlyPrecips[i] || 0);
+        }
+      });
+      
+      return {
+        ...loc,
+        totalPrecip: historyTotal.toFixed(1),
+        next24hPrecip: next24hSum.toFixed(1),
+        next10dPrecip: next10dPrecip.toFixed(1)
+      };
+    });
+  } catch(e) {
+    console.error(e);
+    return null;
+  }
+}
+
+window.openSubRegionModal = async function(cityId, cityName) {
+  const modal = document.getElementById('sub-region-modal');
+  if(!modal) return;
+  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"></i> ${cityName} 상세 기상데이터`;
+  
+  const loadingEl = document.getElementById('sub-region-loading');
+  const gridEl = document.getElementById('sub-region-grid');
+  
+  gridEl.innerHTML = '';
+  loadingEl.classList.remove('hidden');
+  modal.showModal();
+  
+  const fp = document.querySelector('#date-range')?._flatpickr;
+  const today = new Date();
+  const format = d => {
+     const offset = d.getTimezoneOffset() * 60000;
+     return (new Date(d - offset)).toISOString().split('T')[0];
+  };
+  
+  // 기본값 (today - 2) ~ today
+  const defaultStartDate = new Date(today);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
+  let s = format(defaultStartDate);
+  let e = format(today);
+  
+  if (fp && fp.selectedDates.length === 2) {
+    s = format(fp.selectedDates[0]);
+    e = format(fp.selectedDates[1]);
+  }
+  
+  const data = await fetchSubRegionData(cityId, cityName, s, e);
+  loadingEl.classList.add('hidden');
+  
+  if (!data) {
+    gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터를 불러올 수 없습니다.</div>`;
+    return;
+  }
+  
+  data.forEach(d => {
+    gridEl.innerHTML += `
+      <div class="bg-white md:bg-slate-800 rounded-xl p-4 shadow border border-[#E5E5E5] md:border-slate-700">
+        <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}</h4>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">선택 기간 강수량</span>
+            <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">향후 24시간 예상</span>
+            <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">향후 10일 예상</span>
+            <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+};
 
 // ==========================================================
 // 5. 지도 모달 제어 함수 (Leaflet.js 연동)
