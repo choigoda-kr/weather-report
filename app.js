@@ -70,7 +70,10 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
   const cacheKey = `weather_data_v2_${startDateStr}_${endDateStr}`;
   const cached = sessionStorage.getItem(cacheKey);
 
-  if (!forceRefresh && cached) {
+  const urlParamsForCache = new URLSearchParams(window.location.search);
+  const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
+
+  if (!isTestMode && !forceRefresh && cached) {
     const data = JSON.parse(cached);
     if (Date.now() - data.timestamp < CACHE_TTL) {
       console.log('Using cached data for', startDateStr, 'to', endDateStr);
@@ -139,21 +142,57 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
       const futureDates = [];
       const futurePrecips = [];
       
+      const now = new Date();
+      
       if (data.daily && data.daily.time) {
         data.daily.time.forEach((t, i) => {
           const p = data.daily.precipitation_sum[i] || 0;
           
-          // 1. 선택 기간 강수량 (과거/현재 조회용)
-          if (t >= startDateStr && t <= endDateStr) {
-            historyTotal += p;
-            dailyDates.push(t);
-            dailyPrecips.push(p);
-          }
-          
-          // 2. 향후 10일 강수량 (모달 예보용)
-          if (t >= todayIso && futureDates.length < 10) {
-            futureDates.push(t);
-            futurePrecips.push(p);
+          if (t === todayIso) {
+            let todayHistorySum = 0;
+            let todayFutureSum = 0;
+            
+            const hourlyTimes = data.hourly?.time || [];
+            const hourlyPrecips = data.hourly?.precipitation || [];
+            
+            hourlyTimes.forEach((ht, hidx) => {
+              if (ht.startsWith(todayIso)) {
+                const htDate = new Date(ht);
+                const val = hourlyPrecips[hidx] || 0;
+                if (htDate <= now) {
+                  todayHistorySum += val;
+                } else {
+                  todayFutureSum += val;
+                }
+              }
+            });
+            
+            // 1. 선택 기간 강수량 (오늘 날짜는 현재 시각 이전까지의 실적만 합산)
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += todayHistorySum;
+              dailyDates.push(t);
+              dailyPrecips.push(todayHistorySum);
+            }
+            
+            // 2. 향후 10일 강수량 (오늘 날짜는 현재 시각 이후의 예측치만 합산)
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(todayFutureSum);
+            }
+          } else {
+            // 오늘이 아닌 날짜들은 원본 일일 합산값 그대로 처리
+            // 1. 선택 기간 강수량 (과거/현재 조회용)
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += p;
+              dailyDates.push(t);
+              dailyPrecips.push(p);
+            }
+            
+            // 2. 향후 10일 강수량 (모달 예보용)
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(p);
+            }
           }
         });
       }
@@ -220,9 +259,27 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
       payload: processedData
     }));
 
-    document.getElementById('loading-indicator').classList.add('hidden');
-    updateLastTimeString();
-    
+    // [정식 기능] URL 파라미터 ?mode=test_rain 기상 경보 시스템 테스트 모드
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'test_rain' && processedData && processedData.length >= 2) {
+      console.log('[Mock Mode] ?mode=test_rain 호우 경보 시스템 가상 테스트 가동');
+      
+      // 1. 과천 (index 0) -> 주의보(orange) 주입
+      processedData[0].alertLevel = 'orange';
+      
+      // 2. 여주 (index 1) -> 경보(red) 주입 및 1시간 강수량 55.5mm 임시 추가하여 긴급 모달 트리거
+      processedData[1].alertLevel = 'red';
+      
+      const futureHour = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const offset = futureHour.getTimezoneOffset() * 60000;
+      const futureLocalStr = new Date(futureHour - offset).toISOString().substring(0, 16);
+      
+      processedData[1].hourlyTimes = processedData[1].hourlyTimes || [];
+      processedData[1].hourlyPrecips = processedData[1].hourlyPrecips || [];
+      processedData[1].hourlyTimes.push(futureLocalStr);
+      processedData[1].hourlyPrecips.push(55.5);
+    }
+
     return processedData;
     
   } catch (error) {
@@ -251,9 +308,9 @@ function renderCards(dataArray) {
   dataArray.forEach(data => {
     let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
     if (data.alertLevel === 'red') {
-      borderClass = 'border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+      borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
     } else if (data.alertLevel === 'orange') {
-      borderClass = 'border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+      borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
     }
 
     const card = document.createElement('div');
@@ -409,12 +466,24 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
   const barColor = colorTheme === 'future' ? 'bg-amber-400' : 'bg-blue-400';
   const textColor = colorTheme === 'future' ? 'text-amber-400' : 'text-blue-400';
   
+  const now = new Date();
   const hoursData = [];
   let maxPrecip = -1;
   let maxIdx = -1;
   
   for(let i=0; i<hourlyTimes.length; i++) {
     if(hourlyTimes[i].startsWith(dateStr)) {
+      const itemTime = new Date(hourlyTimes[i]);
+      
+      // 과거 강수내역 모달(history)의 경우: 오늘 날짜라면 현재 시각 이전까지만 표출
+      if (colorTheme === 'history' && itemTime > now) {
+        continue;
+      }
+      // 향후 10일 예상 모달(future)의 경우: 오늘 날짜라면 현재 시각 이후만 표출
+      if (colorTheme === 'future' && itemTime <= now) {
+        continue;
+      }
+      
       const val = hourlyPrecips[i] || 0;
       hoursData.push({ time: hourlyTimes[i], val });
       if(val > maxPrecip) { maxPrecip = val; maxIdx = hoursData.length - 1; }
@@ -669,15 +738,46 @@ async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
       const futureDates = [];
       const futurePrecips = [];
       
+      const now = new Date();
+      
       if (data.daily && data.daily.time) {
         data.daily.time.forEach((t, i) => {
           const p = data.daily.precipitation_sum[i] || 0;
-          if (t >= startDateStr && t <= endDateStr) {
-            historyTotal += p;
-          }
-          if (t >= todayIso && futureDates.length < 10) {
-            futureDates.push(t);
-            futurePrecips.push(p);
+          
+          if (t === todayIso) {
+            let todayHistorySum = 0;
+            let todayFutureSum = 0;
+            
+            const hourlyTimes = data.hourly?.time || [];
+            const hourlyPrecips = data.hourly?.precipitation || [];
+            
+            hourlyTimes.forEach((ht, hidx) => {
+              if (ht.startsWith(todayIso)) {
+                const htDate = new Date(ht);
+                const val = hourlyPrecips[hidx] || 0;
+                if (htDate <= now) {
+                  todayHistorySum += val;
+                } else {
+                  todayFutureSum += val;
+                }
+              }
+            });
+            
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += todayHistorySum;
+            }
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(todayFutureSum);
+            }
+          } else {
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += p;
+            }
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(p);
+            }
           }
         });
       }
