@@ -99,9 +99,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     futureDate.setDate(futureDate.getDate() + 11);
     const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
     
-    // Batch Request URL 생성 (past_days 완전 삭제)
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${futureIso}`;
-    
+    // Batch Request URL 생성 (past_days 파라미터 14일 복구 및 start/end_date 제거)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&past_days=14&forecast_days=14`;    
     console.log('Fetching Open-Meteo Data...');
     const res = await fetch(url);
     if (!res.ok) {
@@ -753,7 +752,7 @@ async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
   futureDate.setDate(futureDate.getDate() + 11);
   const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
   
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&start_date=${startDateStr}&end_date=${futureIso}`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&past_days=14&forecast_days=14`;
   
   try {
     const res = await fetch(url);
