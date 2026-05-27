@@ -280,6 +280,9 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
       processedData[1].hourlyPrecips.push(55.5);
     }
 
+    document.getElementById('loading-indicator').classList.add('hidden');
+    updateLastTimeString();
+
     return processedData;
     
   } catch (error) {
@@ -632,13 +635,14 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
   document.getElementById('detail-modal').showModal();
 };
 
-// 4. Flatpickr 초기화 및 디바운싱 구동
-let debounceTimer;
+// 4. Flatpickr 초기화 및 로직
+let isUserCustomDate = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   initSkeleton(); // 최초 로딩 시 스켈레톤 배치
   
   const today = new Date();
+  const resetBtn = document.getElementById('btn-auto-refresh-reset');
   
   // 기본값: 오늘 기준 최근 2일 (당일 기준 D-2)
   const defaultStartDate = new Date(today);
@@ -665,39 +669,65 @@ document.addEventListener('DOMContentLoaded', () => {
     minDate: maxLimitDate,
     maxDate: today,
     dateFormat: "Y-m-d",
-    onChange: function(selectedDates, dateStr, instance) {
+    onChange: async function(selectedDates, dateStr, instance) {
       if (selectedDates.length === 2) {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-          document.getElementById('loading-indicator').classList.remove('hidden');
-          const s = format(selectedDates[0]);
-          const e = format(selectedDates[1]);
-          initSkeleton(); // 패치하는 동안 기존 카드 비우고 스켈레톤 노출
-          const d = await fetchWeatherData(s, e);
-          renderCards(d);
-        }, 300); // 300ms 디바운스
+        isUserCustomDate = true;
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        
+        document.getElementById('loading-indicator').classList.remove('hidden');
+        const s = format(selectedDates[0]);
+        const e = format(selectedDates[1]);
+        const d = await fetchWeatherData(s, e);
+        if (d) renderCards(d);
       }
     }
   });
 
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      isUserCustomDate = false;
+      resetBtn.classList.add('hidden');
+      
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      
+      const s = format(dynamicStartDate);
+      const e = format(nowToday);
+      
+      const fp = document.querySelector('#date-range')?._flatpickr;
+      if (fp) fp.setDate([s, e], false);
+      
+      document.getElementById('loading-indicator').classList.remove('hidden');
+      const d = await fetchWeatherData(s, e, true);
+      if (d) renderCards(d);
+    });
+  }
+
   // 최초 로딩 시 API Call
   fetchWeatherData(currentStart, currentEnd).then(renderCards);
 
-  // 30분 단위 백그라운드 자동 갱신 (알림 없이 조용히 갱신)
+  // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
   setInterval(async () => {
     console.log('[Auto-Refresh] Fetching latest weather data...');
     const fp = document.querySelector('#date-range')?._flatpickr;
-    let s = currentStart;
-    let e = currentEnd;
-    if (fp && fp.selectedDates.length === 2) {
+    let s, e;
+    
+    if (isUserCustomDate && fp && fp.selectedDates.length === 2) {
       s = format(fp.selectedDates[0]);
       e = format(fp.selectedDates[1]);
+    } else {
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      
+      s = format(dynamicStartDate);
+      e = format(nowToday);
+      
+      if (fp) fp.setDate([s, e], false);
     }
     
-    // 로딩 인디케이터 활성화 (스켈레톤 UI 대신 헤더 인디케이터만 노출)
     document.getElementById('loading-indicator').classList.remove('hidden');
-    
-    // forceRefresh=true 전달하여 캐시 무시하고 강제 갱신
     const d = await fetchWeatherData(s, e, true);
     if (d) renderCards(d);
   }, 30 * 60 * 1000); // 30분(1800000ms)
