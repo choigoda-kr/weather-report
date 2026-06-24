@@ -1,0 +1,628 @@
+<script>
+function initSkeleton() {
+  const grid = document.getElementById('weather-grid');
+  grid.innerHTML = '';
+  // 15개의 스켈레톤 UI 생성
+  for(let i=0; i<15; i++) {
+    grid.innerHTML += `
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none">
+        <div class="flex justify-between">
+          <div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"><\/div>
+          <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"><\/div>
+        <\/div>
+        <div class="space-y-3 mt-auto">
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
+           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
+        <\/div>
+      <\/div>
+    `;
+  }
+}
+
+// 4. 모달 관련 전역 함수
+window.toggleHourlyData = function(dateIndex) {
+  const el = document.getElementById(`hourly-row-${dateIndex}`);
+  if(el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+};
+
+function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
+  const barColor = colorTheme === 'future' ? 'bg-amber-400' : 'bg-blue-400';
+  const textColor = colorTheme === 'future' ? 'text-amber-400' : 'text-blue-400';
+  
+  const now = new Date();
+  const hoursData = [];
+  let maxPrecip = -1;
+  let maxIdx = -1;
+  
+  for(let i=0; i<hourlyTimes.length; i++) {
+    if(hourlyTimes[i].startsWith(dateStr)) {
+      const itemTime = new Date(hourlyTimes[i]);
+      
+      // 과거 강수내역 모달(history)의 경우: 오늘 날짜라면 현재 시각 이전까지만 표출
+      if (colorTheme === 'history' && itemTime > now) {
+        continue;
+      }
+      // 향후 10일 예상 모달(future)의 경우: 오늘 날짜라면 현재 시각 이후만 표출
+      if (colorTheme === 'future' && itemTime <= now) {
+        continue;
+      }
+      
+      const val = hourlyPrecips[i] || 0;
+      hoursData.push({ time: hourlyTimes[i], val });
+      if(val > maxPrecip) { maxPrecip = val; maxIdx = hoursData.length - 1; }
+    }
+  }
+  
+  if(hoursData.length === 0) {
+    return `<div class="text-center text-xs text-slate-400 py-2">시간별 데이터가 없습니다.<\/div>`;
+  }
+  
+  let chartHtml = `<div class="flex overflow-x-auto gap-2 pb-2 pt-1 custom-scrollbar-hide snap-x">`;
+  hoursData.forEach((d, idx) => {
+    const isMax = (idx === maxIdx && maxPrecip > 0);
+    const hColor = isMax ? 'bg-red-500' : barColor;
+    const tColor = isMax ? 'text-red-500 font-bold' : 'text-slate-400 md:text-slate-500';
+    const valColor = isMax ? 'text-red-500 font-bold' : 'text-slate-600 md:text-slate-400';
+    
+    let hPx = 2;
+    if(maxPrecip > 0 && d.val > 0) {
+      hPx = Math.max(2, Math.floor((d.val / maxPrecip) * 36)); 
+    }
+    
+    const hourStr = d.time.substring(11, 16); 
+    const valStr = d.val > 0 ? d.val.toFixed(1) : '0';
+    
+    chartHtml += `
+      <div class="flex flex-col items-center justify-end min-w-[36px] snap-center">
+        <span class="text-[10px] mb-1 ${valColor}">${valStr}<\/span>
+        <div class="w-4 rounded-t-sm ${hColor}" style="height: ${hPx}px; transition: height 0.3s ease;"><\/div>
+        <span class="text-[9px] mt-1 ${tColor}">${hourStr}<\/span>
+      <\/div>
+    `;
+  });
+  chartHtml += `<\/div>`;
+  
+  if(maxPrecip > 0) {
+    const peakTime = hoursData[maxIdx].time.substring(11, 16);
+    chartHtml = `<div class="text-[11px] mb-2 text-red-500 font-bold tracking-tight"><i class="fa-solid fa-triangle-exclamation"><\/i> ${peakTime} 피크 집중 강수 (${maxPrecip.toFixed(1)}mm)<\/div>` + chartHtml;
+  }
+  return chartHtml;
+}
+
+window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, total) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"><\/i> ${name} 과거 강수내역`;
+  document.getElementById('modal-total').innerText = total;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  dates.forEach((date, i) => {
+    const val = precips[i] !== null ? Number(precips[i]).toFixed(1) : '0.0';
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('hist-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"><\/i> ${date}
+        <\/td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-[#003366] md:text-blue-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${val}<\/td>
+      <\/tr>
+      <tr id="hourly-row-hist-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'history')}
+        <\/td>
+      <\/tr>
+    `;
+  });
+  document.getElementById('detail-modal').showModal();
+};
+
+window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock text-sky-500 md:text-sky-400"><\/i> ${name} 향후 24시간 강수예측`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  
+  let sum = 0;
+  const nowMs = Date.now();
+  const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+  
+  let hasData = false;
+  
+  if (hourlyTimes && hourlyTimes.length > 0) {
+    hourlyTimes.forEach((t, i) => {
+      const timeMs = new Date(t).getTime();
+      if (timeMs >= nowMs && timeMs <= next24hMs) {
+        hasData = true;
+        const val = hourlyPrecips[i] !== null && hourlyPrecips[i] !== undefined ? Number(hourlyPrecips[i]) : 0;
+        sum += val;
+        const valStr = val.toFixed(1);
+        
+        // Extract hour string, e.g. "2023-01-01T15:00" -> "15:00"
+        const hourStr = t.substring(11, 16);
+        const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
+        
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+            <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono">
+              <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}
+            <\/td>
+            <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
+          <\/tr>
+        `;
+      }
+    });
+  }
+  
+  if (!hasData) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+  }
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
+  document.getElementById('detail-modal').showModal();
+};
+
+window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"><\/i> ${name} 향후 10일 강수예측`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> Open-Meteo`;
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  
+  let sum = 0;
+  
+  if (!dates || dates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+    document.getElementById('modal-total').innerText = '0.0';
+    document.getElementById('detail-modal').showModal();
+    return;
+  }
+  
+  dates.forEach((date, i) => {
+    const val = precips[i] !== null ? Number(precips[i]) : 0;
+    sum += val;
+    const valStr = val.toFixed(1);
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"><\/i> ${date}
+        <\/td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
+      <\/tr>
+      <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future')}
+        <\/td>
+      <\/tr>
+    `;
+  });
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
+  document.getElementById('detail-modal').showModal();
+};
+
+// 4. Flatpickr 초기화 및 로직
+let isUserCustomDate = false;
+
+function initApp() {
+  initSkeleton(); // 최초 로딩 시 스켈레톤 배치
+  
+  const today = new Date();
+  const resetBtn = document.getElementById('btn-auto-refresh-reset');
+  
+  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-2)
+  const defaultStartDate = new Date(today);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
+  
+  // 최대 90일(3개월) 이내 제한 설정
+  const maxLimitDate = new Date(today);
+  maxLimitDate.setDate(maxLimitDate.getDate() - 90);
+  
+  const format = d => {
+     // 로컬 타임존 기준으로 yyyy-mm-dd 추출
+     const offset = d.getTimezoneOffset() * 60000;
+     const localISOTime = (new Date(d - offset)).toISOString().split('T')[0];
+     return localISOTime;
+  };
+  
+  let currentStart = format(defaultStartDate);
+  let currentEnd = format(today);
+
+  flatpickr('#date-range', {
+    mode: 'range',
+    locale: 'ko', // 한국어 로케일 지정 (index.html에 cdn 추가됨)
+    defaultDate: [currentStart, currentEnd],
+    minDate: maxLimitDate,
+    maxDate: today,
+    dateFormat: "Y-m-d",
+    onChange: function(selectedDates, dateStr, instance) {
+      // 이제 날짜 선택 시 바로 조회하지 않고, '조회' 버튼을 눌러야 작동합니다.
+      // onChange에서는 아무 동작도 하지 않습니다.
+    }
+  });
+
+  const searchBtn = document.getElementById('btn-search-date');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', async () => {
+      const fp = document.querySelector('#date-range')?._flatpickr;
+      if (fp && fp.selectedDates.length === 2) {
+        isUserCustomDate = true;
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        
+        document.getElementById('loading-indicator').classList.remove('hidden');
+        const s = format(fp.selectedDates[0]);
+        const e = format(fp.selectedDates[1]);
+        const d = await fetchWeatherData(s, e);
+        if (d) renderCards(d);
+      } else {
+        if(window.showToast) window.showToast("조회할 기간(시작일과 종료일)을 모두 선택해주세요.", true);
+      }
+    });
+  }
+
+  const dataSourceBtn = document.getElementById('btn-data-source');
+  const dataSourceModal = document.getElementById('data-source-modal');
+  const dataSourceCloseBtn = document.getElementById('data-source-modal-close-btn');
+
+  if (dataSourceBtn && dataSourceModal) {
+    dataSourceBtn.addEventListener('click', () => {
+      dataSourceModal.showModal();
+    });
+  }
+  if (dataSourceCloseBtn && dataSourceModal) {
+    dataSourceCloseBtn.addEventListener('click', () => {
+      dataSourceModal.close();
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      isUserCustomDate = false;
+      resetBtn.classList.add('hidden');
+      
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      
+      const s = format(dynamicStartDate);
+      const e = format(nowToday);
+      
+      const fp = document.querySelector('#date-range')?._flatpickr;
+      if (fp) fp.setDate([s, e], false);
+      
+      document.getElementById('loading-indicator').classList.remove('hidden');
+      const d = await fetchWeatherData(s, e, true);
+      if (d) renderCards(d);
+    });
+  }
+
+  // 최초 로딩 시 API Call
+  fetchWeatherData(currentStart, currentEnd).then(renderCards);
+
+  // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
+  setInterval(async () => {
+    console.log('[Auto-Refresh] Fetching latest weather data...');
+    const fp = document.querySelector('#date-range')?._flatpickr;
+    let s, e;
+    
+    if (isUserCustomDate && fp && fp.selectedDates.length === 2) {
+      s = format(fp.selectedDates[0]);
+      e = format(fp.selectedDates[1]);
+    } else {
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      
+      s = format(dynamicStartDate);
+      e = format(nowToday);
+      
+      if (fp) fp.setDate([s, e], false);
+    }
+    
+    document.getElementById('loading-indicator').classList.remove('hidden');
+    const d = await fetchWeatherData(s, e, true);
+    if (d) renderCards(d);
+  }, 30 * 60 * 1000); // 30분(1800000ms)
+}
+
+// 비동기 스크립트 로드 시 DOMContentLoaded가 이미 발생했을 수 있으므로 상태 확인 후 실행
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+// ==========================================================
+// 서브지역(읍면동) 데이터 Fetch 및 모달 렌더링
+// ==========================================================
+async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
+  const regions = window.subRegionsData ? window.subRegionsData[cityId] : null;
+  if (!regions || regions.length === 0) {
+    window.showToast(`${cityName}의 세부 지역 데이터가 없습니다.`, true);
+    return null;
+  }
+  
+  const lats = regions.map(l => l.lat).join(',');
+  const lons = regions.map(l => l.lon).join(',');
+  
+  const todayDate = new Date();
+  const offset = todayDate.getTimezoneOffset() * 60000;
+  const todayIso = (new Date(todayDate - offset)).toISOString().split('T')[0];
+  const futureDate = new Date(todayDate);
+  futureDate.setDate(futureDate.getDate() + 11);
+  const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
+  
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats + '&longitude=' + lons + '&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&past_days=14&forecast_days=14';
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API Error ' + res.status);
+    let results = await res.json();
+    if (!Array.isArray(results)) results = [results];
+    
+    return regions.map((loc, index) => {
+      const data = results[index] || {};
+      let historyTotal = 0;
+      
+      const futureDates = [];
+      const futurePrecips = [];
+      
+      const now = new Date();
+      
+      if (data.daily && data.daily.time) {
+        data.daily.time.forEach((t, i) => {
+          const p = data.daily.precipitation_sum[i] || 0;
+          
+          if (t === todayIso) {
+            let todayHistorySum = 0;
+            let todayFutureSum = 0;
+            
+            const hourlyTimes = data.hourly?.time || [];
+            const hourlyPrecips = data.hourly?.precipitation || [];
+            
+            hourlyTimes.forEach((ht, hidx) => {
+              if (ht.startsWith(todayIso)) {
+                const htDate = new Date(ht);
+                const val = hourlyPrecips[hidx] || 0;
+                if (htDate <= now) {
+                  todayHistorySum += val;
+                } else {
+                  todayFutureSum += val;
+                }
+              }
+            });
+            
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += todayHistorySum;
+            }
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(todayFutureSum);
+            }
+          } else {
+            if (t >= startDateStr && t <= endDateStr) {
+              historyTotal += p;
+            }
+            if (t >= todayIso && futureDates.length < 10) {
+              futureDates.push(t);
+              futurePrecips.push(p);
+            }
+          }
+        });
+      }
+      const next10dPrecip = futurePrecips.reduce((sum, val) => sum + (val || 0), 0);
+      
+      const nowMs = Date.now();
+      const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+      let next24hSum = 0;
+      
+      const hourlyTimes = data.hourly?.time || [];
+      const hourlyPrecips = data.hourly?.precipitation || [];
+      hourlyTimes.forEach((t, i) => {
+        const timeMs = new Date(t).getTime();
+        if (timeMs >= nowMs && timeMs <= next24hMs) {
+          next24hSum += (hourlyPrecips[i] || 0);
+        }
+      });
+      
+      return {
+        ...loc,
+        totalPrecip: historyTotal.toFixed(1),
+        next24hPrecip: next24hSum.toFixed(1),
+        next10dPrecip: next10dPrecip.toFixed(1)
+      };
+    });
+  } catch(e) {
+    console.error(e);
+    return null;
+  }
+}
+
+window.openSubRegionModal = async function(cityId, cityName) {
+  const modal = document.getElementById('sub-region-modal');
+  if(!modal) return;
+  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"><\/i> ${cityName} 상세 기상데이터`;
+  
+  const loadingEl = document.getElementById('sub-region-loading');
+  const gridEl = document.getElementById('sub-region-grid');
+  
+  gridEl.innerHTML = '';
+  loadingEl.classList.remove('hidden');
+  modal.showModal();
+  
+  const fp = document.querySelector('#date-range')?._flatpickr;
+  const today = new Date();
+  const format = d => {
+     const offset = d.getTimezoneOffset() * 60000;
+     return (new Date(d - offset)).toISOString().split('T')[0];
+  };
+  
+  // 기본값 (today - 2) ~ today
+  const defaultStartDate = new Date(today);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
+  let s = format(defaultStartDate);
+  let e = format(today);
+  
+  if (fp && fp.selectedDates.length === 2) {
+    s = format(fp.selectedDates[0]);
+    e = format(fp.selectedDates[1]);
+  }
+  
+  const data = await fetchSubRegionData(cityId, cityName, s, e);
+  loadingEl.classList.add('hidden');
+  
+  if (!data) {
+    gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터를 불러올 수 없습니다.<\/div>`;
+    return;
+  }
+  
+  data.forEach(d => {
+    gridEl.innerHTML += `
+      <div class="bg-white md:bg-slate-800 rounded-xl p-4 shadow border border-[#E5E5E5] md:border-slate-700">
+        <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}<\/h4>
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">선택 기간 강수량<\/span>
+            <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
+          <\/div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">향후 24시간 예상<\/span>
+            <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
+          <\/div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500">향후 10일 예상<\/span>
+            <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
+          <\/div>
+        <\/div>
+      <\/div>
+    `;
+  });
+};
+
+// ==========================================================
+// 5. 지도 모달 제어 함수 (Leaflet.js 연동)
+// ==========================================================
+
+/** 지도 모달 닫기 */
+window.closeMapModal = function() {
+  const modal = document.getElementById('map-modal');
+  modal.close();
+  // 닫기 후 인스턴스 정리 (메모리 누수 방지)
+  if (window._leafletMap) {
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+};
+
+/**
+ * 지도 모달 열기
+ * @param {string} name  - 지점명
+ * @param {number} lat   - 위도
+ * @param {number} lon   - 경도
+ * @param {string} condition - 기상 텍스트 (맥음, 비 등)
+ * @param {string} temp  - 현재 기온
+ */
+window.showMapModal = function(name, lat, lon, condition, temp) {
+
+  // 1. 좌표 유효성 검사
+  if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
+    alert(`[불러오기 실패] ${name} 지점의 위치 좌표가 없어 지도를 표시할 수 없습니다.`);
+    return;
+  }
+
+  // 2. 모달 타이틀 갱신
+  document.getElementById('map-modal-title-text').textContent = `${name} 위치 지도`;
+  document.getElementById('map-modal-info').textContent = `${condition} | ${temp !== '-' ? temp + '°C' : '-'} | ${lat.toFixed(4)}°N  ${lon.toFixed(4)}°E`;
+
+  // 3. 지도 모달 열기
+  document.getElementById('map-modal').showModal();
+
+  // 4. 기존 인스턴스 제거 (중복 초기화 방지) — showModal() 직후, setTimeout 밖에서 선행 처리
+  if (window._leafletMap) {
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+
+  // 5. 대기 중 로딩 스피너 표시 (300ms 대기 동안 UX 개선)
+  const mapEl = document.getElementById('map-container');
+  mapEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#94a3b8;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"><\/i>
+      <p style="font-size:12px; font-weight:500;">지도를 불러오는 중...<\/p>
+    <\/div>
+  `;
+
+  // 6. [핵심 수정] Leaflet 초기화 전체를 setTimeout 300ms 안으로 이동
+  //    showModal()은 동기적으로 open 속성만 추가할 뿐,
+  //    브라우저의 레이아웃(리플로우/페인팅) 완료를 보장하지 않음.
+  //    즉시 초기화 시 map-container의 크기가 0이라 Leaflet 에러 발생.
+  //    300ms 대기로 렌더링 완료 후 초기화하여 근본 해결.
+  setTimeout(() => {
+
+    try {
+      mapEl.innerHTML = ''; // 로딩 스피너 제거
+
+      window._leafletMap = L.map('map-container', {
+        center: [lat, lon],
+        zoom: 11,
+        zoomControl: true,
+        scrollWheelZoom: true
+      });
+
+      // OpenStreetMap 타일 레이어
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap<\/a>'
+      }).addTo(window._leafletMap);
+
+      // 마커 추가
+      const marker = L.marker([lat, lon]).addTo(window._leafletMap);
+
+      // 팝업 내용 (지점명 · 기상 · 기온 · 좌표)
+      const popupContent = `
+        <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
+          <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}<\/div>
+          <div style="font-size: 12px; color: #555; line-height: 1.7;">
+            기상: <b>${condition}<\/b><br>
+            기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}<\/b><br>
+            <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E<\/span>
+          <\/div>
+        <\/div>
+      `;
+      marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
+
+      // 컨테이너 크기 재계산 (dialog 레이아웃 최종 안정화)
+      window._leafletMap.invalidateSize();
+
+    } catch (err) {
+      // Leaflet 초기화 실패 시 사용자 친화적 에러 표시
+      console.error('[showMapModal] Leaflet 초기화 실패:', err);
+      mapEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"><\/i>
+          <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.<\/p>
+          <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.<\/p>
+        <\/div>
+      `;
+    }
+
+  }, 300); // 300ms: <dialog> 렌더링 및 CSS 애니메이션 완료 대기
+}
+
+window.toggleModalFullscreen = function() {
+  const modalBox = document.querySelector('#detail-modal > div');
+  const icon = document.getElementById('modal-fs-icon');
+  
+  modalBox.classList.toggle('modal-fullscreen');
+  
+  if (modalBox.classList.contains('modal-fullscreen')) {
+    icon.classList.remove('fa-expand');
+    icon.classList.add('fa-compress');
+  } else {
+    icon.classList.remove('fa-compress');
+    icon.classList.add('fa-expand');
+  }
+};
+</script>

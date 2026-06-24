@@ -1,0 +1,214 @@
+<style>
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #FBFBFB;
+  background-image: none;
+}
+
+@media (min-width: 768px) {
+  body {
+    background-color: #0f172a;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+      radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+      radial-gradient(at 100% 0%, hsla(339,49%,30%,0.1) 0, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+/* Glassmorphism utility for cards */
+.weather-card {
+  background: #FFFFFF;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
+}
+.weather-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) {
+  .weather-card {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+  .weather-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.4), 0 0 15px -3px rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* Skeleton Loading Animation */
+.skeleton-card {
+  animation: card-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes card-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* Flatpickr overrides (common logic) */
+.flatpickr-day.selected {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+.flatpickr-day.inRange, .flatpickr-day.prevMonthDay.inRange, .flatpickr-day.nextMonthDay.inRange, .flatpickr-day.today.inRange, .flatpickr-day.prevMonthDay.today.inRange, .flatpickr-day.nextMonthDay.today.inRange {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: transparent !important;
+  box-shadow: -5px 0 0 rgba(59, 130, 246, 0.15), 5px 0 0 rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Flatpickr dark theme overrides */
+@media (min-width: 768px) {
+  .flatpickr-calendar {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  }
+  .flatpickr-day.inRange, .flatpickr-day.prevMonthDay.inRange, .flatpickr-day.nextMonthDay.inRange, .flatpickr-day.today.inRange, .flatpickr-day.prevMonthDay.today.inRange, .flatpickr-day.nextMonthDay.today.inRange {
+    background: rgba(59, 130, 246, 0.25) !important;
+    box-shadow: -5px 0 0 rgba(59, 130, 246, 0.25), 5px 0 0 rgba(59, 130, 246, 0.25) !important;
+  }
+  .flatpickr-day:hover {
+    background: #334155 !important;
+  }
+  .flatpickr-months .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months, .flatpickr-current-month input.cur-year {
+    color: #fff !important;
+    background: #1e293b !important;
+  }
+  .flatpickr-weekday {
+    color: #94a3b8 !important;
+  }
+  span.flatpickr-weekday {
+    background: #1e293b !important;
+  }
+  .flatpickr-day {
+    color: #e2e8f0 !important;
+  }
+  .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover {
+    color: #475569 !important;
+  }
+}
+
+/* Modal Animations & custom scrollbar */
+@keyframes modalScale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.8);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 1);
+}
+
+/* Flatpickr Mobile Width Override */
+@media (max-width: 768px) {
+  .flatpickr-calendar.open {
+    display: inline-block !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90vw !important;
+    max-width: 320px !important;
+  }
+  .flatpickr-innerContainer, .flatpickr-rContainer, .flatpickr-days, .dayContainer {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ============================================
+   지도 모달 전용 스타일 (전체화면 Full-Screen)
+   ============================================ */
+
+/* dialog 브라우저 기본값 강제 오버라이드 — 전체화면 */
+#map-modal {
+  width: 100vw;
+  height: 100dvh; /* dvh: 모바일 주소표시줄 고려한 동적 뷰포트 높이 */
+  max-width: 100vw;
+  max-height: 100dvh;
+  padding: 0;
+  margin: 0;
+  border: none;
+  overflow: hidden;
+}
+
+/* 모달 내부 컨테이너 — 전체 채움 */
+.map-modal-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 지도 컨테이너 — 전체 화면 채움 (고정 높이 제거) */
+.map-container-height {
+  height: 100%;
+}
+
+
+/* Leaflet attribution 텍스트 크기 */
+.leaflet-control-attribution {
+  font-size: 10px !important;
+}
+
+/* 지도 보기 버튼 (카드 내부) */
+.map-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.map-view-btn:hover {
+  background: rgba(5, 150, 105, 0.18);
+  border-color: rgba(5, 150, 105, 0.5);
+  color: #047857;
+}
+@media (min-width: 768px) {
+  .map-view-btn {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.08);
+    border-color: rgba(52, 211, 153, 0.2);
+  }
+  .map-view-btn:hover {
+    background: rgba(52, 211, 153, 0.18);
+    border-color: rgba(52, 211, 153, 0.45);
+    color: #6ee7b7;
+  }
+}
+
+/* Horizontal Scrollbar Hide */
+.custom-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.custom-scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+</style>

@@ -1,0 +1,374 @@
+<script>
+// 1. 20개 지점 데이터 셋 구축 (광역 4개 신규 + 기존 16개 유지)
+const locations = [
+  { id: 'gwacheon', name: '과천', lat: 37.4262, lon: 126.9890 }, // 과천(590) AWS
+  { id: 'yeoju', name: '여주', lat: 37.2917, lon: 127.6372 }, // 여주(465) AWS
+  { id: 'icheon', name: '이천', lat: 37.2640, lon: 127.4842 }, // 이천(203) ASOS
+  { id: 'yangpyeong', name: '양평', lat: 37.4886, lon: 127.4944 }, // 양평(202) ASOS
+  { id: 'hwaseong', name: '화성', lat: 37.1651, lon: 126.8285 }, // 화성(488) AWS
+  { id: 'suwon', name: '수원', lat: 37.2574, lon: 126.9830 }, // 수원(119) ASOS
+  { id: 'yeoncheon', name: '연천', lat: 38.0964, lon: 127.0744 }, // 연천(491) AWS
+  { id: 'pocheon', name: '포천', lat: 37.8949, lon: 127.2003 }, // 포천(473) AWS
+  { id: 'paju', name: '파주', lat: 37.8859, lon: 126.7661 }, // 파주(99) ASOS
+  { id: 'goyang', name: '고양', lat: 37.6401, lon: 126.8322 }, // 고양(540) AWS
+  { id: 'ganghwa', name: '강화', lat: 37.7074, lon: 126.4463 }, // 강화(201) ASOS
+  { id: 'ongjin', name: '옹진', lat: 37.9660, lon: 124.6305 }, // 백령도(102) ASOS
+  { id: 'gimpo', name: '김포', lat: 37.6049, lon: 126.7151 }, // 김포(441) AWS
+  { id: 'pyeongtaek', name: '평택', lat: 36.9926, lon: 127.1129 }, // 평택(356) AWS
+  { id: 'anseong', name: '안성', lat: 37.0116, lon: 127.2758 }  // 안성(470) AWS
+];
+
+// Open-Meteo WMO Code 파싱 함수
+function getWeatherCondition(code) {
+  switch (true) {
+    case code === 0: return { text: '맑음', icon: 'fa-sun', color: 'text-amber-500 md:text-yellow-400' };
+    case code === 1: return { text: '대체로 맑음', icon: 'fa-cloud-sun', color: 'text-orange-500 md:text-yellow-300' };
+    case code === 2: return { text: '구름조금', icon: 'fa-cloud', color: 'text-slate-500 md:text-slate-300' };
+    case code === 3: return { text: '흐림', icon: 'fa-cloud', color: 'text-slate-600 md:text-slate-400' };
+    case (code >= 45 && code <= 48): return { text: '안개', icon: 'fa-smog', color: 'text-slate-500 md:text-slate-400' };
+    case (code >= 51 && code <= 55): return { text: '이슬비', icon: 'fa-cloud-rain', color: 'text-blue-500 md:text-blue-300' };
+    case (code >= 61 && code <= 65): return { text: '비', icon: 'fa-cloud-showers-heavy', color: 'text-blue-600 md:text-blue-500' };
+    case (code >= 71 && code <= 77): return { text: '눈', icon: 'fa-snowflake', color: 'text-sky-500 md:text-white' };
+    case (code >= 80 && code <= 82): return { text: '소나기', icon: 'fa-cloud-showers-water', color: 'text-blue-500 md:text-blue-400' };
+    case (code >= 95 && code <= 99): return { text: '뇌우', icon: 'fa-cloud-bolt', color: 'text-indigo-600 md:text-yellow-500' };
+    default: return { text: '알수없음', icon: 'fa-circle-question', color: 'text-slate-500 md:text-slate-500' };
+  }
+}
+
+// 전역 Toast 메시지 함수
+window.showToast = function(message, isError = false) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  const bgColor = isError ? 'bg-red-500' : 'bg-slate-800 md:bg-blue-600';
+  const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"><\/i>' : '<i class="fa-solid fa-circle-info"><\/i>';
+  
+  toast.className = `flex items-center gap-2 px-4 py-3 text-white text-sm font-medium rounded shadow-lg transition-all duration-300 transform translate-y-4 opacity-0 ${bgColor}`;
+  toast.innerHTML = `${icon} <span>${message}<\/span>`;
+  
+  container.appendChild(toast);
+  
+  // 페이드인 애니메이션
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-4', 'opacity-0');
+  });
+  
+  // 3초 후 페이드아웃 및 제거
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      if(container.contains(toast)) {
+        container.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+};
+
+// 2. Fetch 및 Mapping 로직 구조화
+async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
+  const CACHE_TTL = 60 * 60 * 1000; // 60분 TTL
+  const cacheKey = `weather_data_v4_${startDateStr}_${endDateStr}`;
+  const cached = sessionStorage.getItem(cacheKey);
+
+  const urlParamsForCache = new URLSearchParams(window.location.search);
+  const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
+
+  if (!isTestMode && !forceRefresh && cached) {
+    const data = JSON.parse(cached);
+    if (Date.now() - data.timestamp < CACHE_TTL) {
+      console.log('Using cached data for', startDateStr, 'to', endDateStr);
+      updateLastTimeString();
+      document.getElementById('loading-indicator').classList.add('hidden');
+      return data.payload;
+    }
+  }
+
+  // 로딩 상태 시작
+  document.getElementById('loading-indicator').classList.remove('hidden');
+
+  try {
+    const lats = locations.map(l => l.lat).join(',');
+    const lons = locations.map(l => l.lon).join(',');
+    const locNamesStr = locations.map(l => l.name).join(',');
+    
+    console.log('Fetching Hybrid Data via GAS Backend...');
+    let results;
+    
+    // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
+    if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
+    }
+    
+    results = await new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler((res) => {
+                try {
+                    resolve(JSON.parse(res));
+                } catch(e) { reject(e); }
+            })
+            .withFailureHandler(reject)
+            .getMergedWeatherData(lats, lons, locNamesStr, startDateStr, endDateStr);
+    });
+
+    // 데이터 정규화(Mapping) 처리
+    const processedData = locations.map((loc, index) => {
+        const data = results[index] || {};
+        
+        // 1. 기상 상태 및 실황 데이터 파싱
+        const currentTemp = data.current?.temp !== undefined ? Number(data.current.temp).toFixed(1) : '-';
+        // AWS에서 서버가 계산해준 과거 누적 강수량 사용 (없으면 0.0)
+        const totalPrecip = data.historyTotal !== undefined ? Number(data.historyTotal).toFixed(1) : '0.0';
+        
+        // 기상 코드가 없으므로 강수 여부로 맑음(0)/비(61) 임시 대체
+        const conditionCode = (parseFloat(totalPrecip) > 0) ? 61 : 0;
+        const condition = getWeatherCondition(conditionCode); 
+
+        // 2. 향후 24시간 강수량 (기상청 단기예보)
+        let next24hSum = 0;
+        const targetPrecips = [];
+        const hourlyTimes = [];
+        const hourlyPrecips = [];
+        
+        if (data.forecast24h && data.forecast24h.precip_hourly) {
+            data.forecast24h.precip_hourly.forEach(p => {
+                let pValue = parseFloat(p.value);
+                if (isNaN(pValue)) {
+                   if (p.value === "강수없음") pValue = 0;
+                   else pValue = 0;
+                }
+                next24hSum += pValue;
+                targetPrecips.push(pValue);
+                
+                // 날짜 포맷 변환 (YYYYMMDD -> YYYY-MM-DDT...)
+                const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
+                hourlyTimes.push(dtStr);
+                hourlyPrecips.push(pValue);
+            });
+        }
+        const next24hPrecip = next24hSum.toFixed(1);
+
+        // 3. 향후 10일 강수량 (Open-Meteo 유지)
+        let next10dSum = 0;
+        const futureDates = data.forecast10d?.time || [];
+        const futurePrecips = data.forecast10d?.precipitation_sum || [];
+        futurePrecips.forEach(p => next10dSum += (p || 0));
+        const next10dPrecip = next10dSum.toFixed(1);
+        
+        const futureHourlyTimes = data.forecast10dHourly?.time || [];
+        const futureHourlyPrecips = data.forecast10dHourly?.precipitation || [];
+
+        // 4. Sliding Window 경보 레벨 판별 (1시간 50mm, 3시간 90mm 등)
+        let alertLevel = 'none';
+        for (let i = 0; i < targetPrecips.length; i++) {
+            const p1 = targetPrecips[i];
+            const p2 = i + 1 < targetPrecips.length ? targetPrecips[i + 1] : 0;
+            const p3 = i + 2 < targetPrecips.length ? targetPrecips[i + 2] : 0;
+            const sum3h = p1 + p2 + p3;
+            if (sum3h >= 90 || p1 >= 50) {
+                alertLevel = 'red'; break;
+            } else if ((sum3h >= 60 || p1 >= 30) && alertLevel !== 'red') {
+                alertLevel = 'orange';
+            }
+        }
+
+        return {
+            ...loc,
+            condition,
+            currentTemp,
+            totalPrecip,
+            next24hPrecip,
+            next10dPrecip,
+            alertLevel,
+            dailyDates: data.dailyDates || [],
+            dailyPrecips: data.dailyPrecips || [],
+            futureDates: futureDates,
+            futurePrecips: futurePrecips,
+            futureHourlyTimes: futureHourlyTimes,
+            futureHourlyPrecips: futureHourlyPrecips,
+            hourlyTimes: hourlyTimes,
+            hourlyPrecips: hourlyPrecips,
+            historyHourlyTimes: data.historyHourlyTimes || [],
+            historyHourlyPrecips: data.historyHourlyPrecips || []
+        };
+    });
+
+    // SessionStorage 캐싱 저장
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+      timestamp: Date.now(),
+      payload: processedData
+    }));
+
+    // [정식 기능] URL 파라미터 ?mode=test_rain 기상 경보 시스템 테스트 모드
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'test_rain' && processedData && processedData.length >= 2) {
+      console.log('[Mock Mode] ?mode=test_rain 호우 경보 시스템 가상 테스트 가동');
+      
+      // 1. 과천 (index 0) -> 주의보(orange) 주입
+      processedData[0].alertLevel = 'orange';
+      
+      // 2. 여주 (index 1) -> 경보(red) 주입 및 1시간 강수량 55.5mm 임시 추가하여 긴급 모달 트리거
+      processedData[1].alertLevel = 'red';
+      
+      const futureHour = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const offset = futureHour.getTimezoneOffset() * 60000;
+      const futureLocalStr = new Date(futureHour - offset).toISOString().substring(0, 16);
+      
+      processedData[1].hourlyTimes.push(futureLocalStr);
+      processedData[1].hourlyPrecips.push(55.5);
+    }
+
+    document.getElementById('loading-indicator').classList.add('hidden');
+    updateLastTimeString();
+
+    return processedData;
+    
+  } catch (error) {
+    console.error('[GAS Fetch Exception]', error);
+    document.getElementById('loading-indicator').classList.add('hidden');
+    window.showToast('데이터 로드 실패 (GAS 환경 확인 요망)', true);
+    return null;
+  }
+}
+
+function updateLastTimeString() {
+  const now = new Date();
+  document.getElementById('last-updated').innerText = `최종 갱신: ${now.toLocaleTimeString('ko-KR')}`;
+}
+
+// 3. UI 렌더링 로직
+function renderCards(dataArray) {
+  const grid = document.getElementById('weather-grid');
+  grid.innerHTML = '';
+  
+  if(!dataArray || dataArray.length === 0) return;
+
+  // 긴급 호우 알림 검사 (50mm 이상)
+  checkEmergencyRain(dataArray);
+
+  dataArray.forEach(data => {
+    let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
+    if (data.alertLevel === 'red') {
+      borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+    } else if (data.alertLevel === 'orange') {
+      borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+    }
+
+    const card = document.createElement('div');
+    card.className = `weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group ${borderClass} transition-all duration-300`;
+    
+    // 장식용 배경 이펙트
+    const bgBlur = document.createElement('div');
+    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color}`;
+    card.appendChild(bgBlur);
+
+    const innerContent = document.createElement('div');
+    innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
+    
+    innerContent.innerHTML = `
+      <div class="flex justify-between items-center mb-4">
+        <!-- 좌측: 지점명 + 지도 보기 버튼 -->
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0 cursor-pointer hover:text-blue-600 md:hover:text-blue-400 transition-colors group/title flex items-center gap-1" onclick='window.openSubRegionModal("${data.id}", "${data.name}")'>
+            ${data.name} <i class="fa-solid fa-circle-chevron-down text-sm opacity-30 group-hover/title:opacity-100 transition-opacity"><\/i>
+          <\/h2>
+          <button class="map-view-btn shrink-0" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
+            <i class="fa-solid fa-map-location-dot"><\/i> 지도 보기
+          <\/button>
+        <\/div>
+        
+        <!-- 우측: 기온 + 날씨 아이콘 세트 -->
+        <div class="flex items-center gap-3 sm:gap-4">
+          <span class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-sm sm:text-base font-normal">°C<\/span><\/span>
+          <div class="flex flex-col items-center shrink-0">
+            <i class="fa-solid ${data.condition.icon} text-3xl sm:text-4xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"><\/i>
+            <span class="text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}<\/span>
+          <\/div>
+        <\/div>
+      <\/div>
+      
+      <div class="space-y-3 mt-auto">
+         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">선택 기간 강수량 <i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
+          <div class="text-right flex items-baseline gap-1">
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+          <\/div>
+        <\/div>
+        
+        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"><\/i>향후 24시간 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"><\/i><\/span>
+          <div class="text-right flex items-baseline gap-1">
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}<\/span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+          <\/div>
+        <\/div>
+
+        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)})'>
+          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"><\/i>향후 10일 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"><\/i><\/span>
+          <div class="text-right flex items-baseline gap-1">
+             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}<\/span>
+             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+          <\/div>
+        <\/div>
+      <\/div>
+    `;
+    
+    card.appendChild(innerContent);
+    grid.appendChild(card);
+  });
+}
+
+function checkEmergencyRain(dataArray) {
+  const threshold = 50.0;
+  const emergencyLogs = [];
+  const affectedLocations = new Set();
+  const now = Date.now();
+  
+  dataArray.forEach(loc => {
+    if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
+    loc.hourlyTimes.forEach((timeStr, i) => {
+      const precip = loc.hourlyPrecips[i];
+      if (precip >= threshold) {
+        const [datePart, timePart] = timeStr.split('T');
+        const targetTime = new Date(timeStr).getTime();
+        
+        // 과거 데이터 제외 (현재 시각 이후만)
+        if (targetTime >= now) {
+          affectedLocations.add(loc.name);
+          emergencyLogs.push({
+            name: loc.name,
+            date: datePart,
+            time: timePart,
+            precip: precip
+          });
+        }
+      }
+    });
+  });
+  
+  if (emergencyLogs.length > 0) {
+    const locsArray = Array.from(affectedLocations).join(', ');
+    document.getElementById('emergency-modal-title').innerHTML = `<i class="fa-solid fa-triangle-exclamation"><\/i> 긴급: ${locsArray}에 강한 호우 예상됨`;
+    
+    const tbody = document.getElementById('emergency-modal-tbody');
+    tbody.innerHTML = '';
+    
+    // 시간순 정렬
+    emergencyLogs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    
+    emergencyLogs.forEach(log => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-4 py-3 font-bold text-slate-800">${log.name}<\/td>
+          <td class="px-4 py-3 text-slate-600">${log.date}<\/td>
+          <td class="px-4 py-3 text-slate-600">${log.time}<\/td>
+          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)}<\/td>
+        <\/tr>
+      `;
+    });
+    
+    document.getElementById('emergency-modal').showModal();
+  }
+}
+</script>
