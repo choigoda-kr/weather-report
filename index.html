@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>경기지역본부 기상상황실</title>
+  <script>
+    // GitHub Pages 등 GAS 외부 환경에서 접속 시 GAS 실서버로 자동 리다이렉트
+    if (typeof google === 'undefined') {
+      window.location.replace("https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec");
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <!-- Leaflet.js (지도 연동) -->
