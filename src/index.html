@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>경기지역본부 기상상황실</title>
+  <script>
+    // GitHub Pages 등 GAS 외부 환경에서 접속 시 GAS 실서버로 자동 리다이렉트
+    if (typeof google === 'undefined') {
+      window.location.replace("https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec");
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- Leaflet.js (지도 연동) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- 데이터 출처 안내 모달 팝업 -->
+  <dialog id="data-source-modal" class="bg-transparent m-auto inset-0 z-[9999] backdrop:bg-black/50 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div class="bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] md:shadow-2xl w-full max-w-4xl overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 class="text-lg font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <i class="fa-solid fa-database text-indigo-500"></i> 데이터 출처 및 활용 현황
+        </h3>
+        <button id="data-source-modal-close-btn" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-4 sm:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left text-slate-700 md:text-slate-300 whitespace-nowrap min-w-[700px]">
+            <thead class="text-xs text-slate-500 md:text-slate-400 bg-[#F5F5F7] md:bg-slate-900/50 uppercase">
+              <tr>
+                <th scope="col" class="px-4 py-3 rounded-tl-lg">데이터 분류</th>
+                <th scope="col" class="px-4 py-3">화면 표시 항목</th>
+                <th scope="col" class="px-4 py-3">활용 중인 데이터 소스</th>
+                <th scope="col" class="px-4 py-3 rounded-tr-lg">적용 방식 및 활용 목적</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E5E5E5] md:divide-slate-700/50">
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">현재 실황</td>
+                <td class="px-4 py-3">현재 기온, 현재 강수량</td>
+                <td class="px-4 py-3 font-medium text-blue-600 md:text-blue-400">기상청 (초단기실황) + Open-Meteo</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-blue-600 md:text-blue-400">[기상청 최우선]</span> 기상청 실시간 관측 데이터 최우선. 장애 시에만 Open-Meteo 보완</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">과거 내역</td>
+                <td class="px-4 py-3">선택 기간 누적 강수량</td>
+                <td class="px-4 py-3 font-medium text-emerald-600 md:emerald-400">기상청 API Hub (AWS)</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-emerald-600 md:text-emerald-400">[기상청 100%]</span> 무인기상관측(AWS) 장비의 실측 강수량을 100% 활용 (정확도 최상)</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">과거 상세</td>
+                <td class="px-4 py-3">날짜별/시간별 강수 그래프</td>
+                <td class="px-4 py-3 font-medium text-emerald-600 md:text-emerald-400">기상청 API Hub (AWS)</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-emerald-600 md:text-emerald-400">[기상청 100%]</span> 100% 기상청 실측 장비가 기록한 시간당 강수량을 가져와 시각화</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">단기 예보</td>
+                <td class="px-4 py-3">향후 24시간 예상 강수량</td>
+                <td class="px-4 py-3 font-medium text-sky-600 md:text-sky-400">기상청 (단기예보)</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-sky-600 md:text-sky-400">[기상청 100%]</span> 우리나라 지형에 최적화된 기상청 단기 예보 모델 데이터 활용</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">중장기 예보</td>
+                <td class="px-4 py-3">향후 10일 예상 강수량</td>
+                <td class="px-4 py-3 font-medium text-amber-600 md:text-amber-400">Open-Meteo</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-amber-600 md:text-amber-400">[Open-Meteo 100%]</span> 기상청 오픈 API 미제공으로 인해 글로벌 모델 10일 치 활용</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">세부 지역</td>
+                <td class="px-4 py-3">각 읍/면/동 강수량</td>
+                <td class="px-4 py-3 font-medium text-purple-600 md:text-purple-400">Open-Meteo</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-purple-600 md:text-purple-400">[Open-Meteo 100%]</span> 관측소가 없는 동네의 위경도 좌표 기반 모델 시뮬레이션 추정치 표출</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <?!= include('Stylesheet'); ?>
+</head>
+<body class="bg-[#FBFBFB] md:bg-slate-900 text-[#1D1D1F] md:text-slate-100 font-sans min-h-screen">
+  <!-- 상단 통합 헤더 영역 -->
+  <header class="p-4 sm:p-6 pb-2">
+    <div class="bg-white/90 md:bg-slate-800/90 md:backdrop-blur-md p-4 rounded-xl shadow-sm md:shadow-lg border border-[#E5E5E5] md:border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-xl sm:text-2xl text-[#1D1D1F] md:text-white flex flex-col sm:flex-row sm:items-end gap-1 sm:gap-2">
+        <div class="flex items-center tracking-[-0.1em]">
+          <i class="fa-solid fa-cloud-sun-rain mr-3 text-blue-500 md:text-blue-400 text-xl sm:text-2xl"></i>
+          <span class="font-black text-[#1D1D1F] md:text-white">경기지역본부 기상상황실</span>
+        </div>
+      </h1>
+      
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end md:justify-center shrink-0">
+        <label for="date-range" class="font-medium text-[#1D1D1F] md:text-slate-300 text-sm hidden sm:block whitespace-nowrap">📅 조회 기간:</label>
+        <div class="relative w-full sm:w-64">
+          <input type="text" id="date-range" class="bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 text-[#1D1D1F] md:text-white rounded-lg px-3 py-2 pl-9 focus:outline-none focus:ring-2 focus:ring-blue-500 md:focus:border-blue-500 w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal transition-all shadow-inner" placeholder="날짜 선택...">
+          <i class="fa-regular fa-calendar absolute left-3 top-2.5 text-blue-500 md:text-slate-400"></i>
+        </div>
+        <button id="btn-search-date" class="bg-[#003366] hover:bg-[#002244] md:bg-blue-600 md:hover:bg-blue-500 transition-colors text-white px-3 py-2 rounded-lg shadow-sm text-sm whitespace-nowrap border border-transparent font-medium">
+          조회
+        </button>
+        <button id="btn-auto-refresh-reset" class="hidden text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 whitespace-nowrap shadow-sm">
+          <i class="fa-solid fa-rotate-right"></i> 실시간 복귀
+        </button>
+      </div>
+      
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        <div id="loading-indicator" class="flex items-center gap-2 text-blue-500 md:text-blue-400 font-medium text-sm">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <span class="hidden sm:inline">로딩중...</span>
+        </div>
+        <div id="last-updated" class="text-xs text-slate-500 md:text-slate-400 font-mono bg-[#F5F5F7] md:bg-slate-900/50 px-3 py-1.5 rounded-full border border-[#E5E5E5] md:border-slate-700 whitespace-nowrap">최종 갱신: -</div>
+        
+        <button id="btn-data-source" class="bg-indigo-600 hover:bg-indigo-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-indigo-600 whitespace-nowrap">
+          <i class="fa-solid fa-circle-info"></i> <span class="text-xs sm:text-sm">데이터 출처</span>
+        </button>
+        
+        <a href="https://choigoda-kr.github.io/gg-disaster-center/" class="bg-blue-600 hover:bg-blue-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-blue-600 whitespace-nowrap hidden sm:flex">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="text-xs sm:text-sm">상황실로</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 5x3 Grid 영역 -->
+  <main class="p-4 sm:p-6 pt-2 flex-grow">
+    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+      <!-- Cards will be dynamically inserted here -->
+    </div>
+  </main>
+
+  <!-- 데이터 모달 팝업 -->
+  <dialog id="detail-modal" class="bg-transparent m-auto inset-0 z-50 backdrop:bg-black/30 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div class="bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl w-full max-w-sm overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 id="modal-title" class="text-lg font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <div class="flex items-center gap-1">
+          <button onclick="toggleModalFullscreen()" id="modal-fs-btn" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-blue-500 md:hover:text-blue-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-expand" id="modal-fs-icon"></i>
+          </button>
+          <button onclick="document.getElementById('detail-modal').close()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-slate-700 md:text-slate-300">
+          <thead class="text-xs text-slate-500 md:text-slate-400 bg-[#F5F5F7] md:bg-slate-900/50 uppercase">
+            <tr>
+              <th scope="col" class="px-4 py-3 rounded-tl-lg">날짜</th>
+              <th scope="col" class="px-4 py-3 text-right rounded-tr-lg">강수량 (mm)</th>
+            </tr>
+          </thead>
+          <tbody id="modal-tbody" class="divide-y divide-[#E5E5E5] md:divide-slate-700/50 flex-col">
+            <!-- Rows inject -->
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 bg-[#F8F8F8] md:bg-slate-900/80 border-t border-[#E5E5E5] md:border-slate-700 flex justify-between items-center">
+        <div id="modal-data-source" class="text-xs text-slate-500"><i class="fa-solid fa-circle-info"></i> Open-Meteo</div>
+        <div class="text-sm font-bold text-[#1D1D1F] md:text-slate-300">합계: <span id="modal-total" class="text-lg text-[#003366] md:text-blue-400 ml-1">0.0</span> <span class="text-[10px] text-slate-500 font-normal">mm</span></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 지도 모달 팝업 (전체화면 Full-Screen) -->
+  <dialog id="map-modal" class="bg-transparent p-0 m-0 w-screen h-screen max-w-none max-h-none backdrop:bg-black/60 backdrop:backdrop-blur-sm">
+    <div class="map-modal-inner">
+      <!-- 오버레이 헤더 (지도 위에 float) -->
+      <div class="absolute top-0 left-0 right-0 z-[1000] px-4 py-3 flex justify-between items-center bg-black/55 backdrop-blur-sm border-b border-white/10">
+        <h3 id="map-modal-title" class="text-base font-bold text-white tracking-tight flex items-center gap-2 drop-shadow">
+          <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
+          <span id="map-modal-title-text">관측 지점 위치</span>
+        </h3>
+        <button id="map-modal-close-btn" onclick="closeMapModal()" class="text-white/80 hover:bg-red-500 hover:text-white transition-all w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border border-white/20 hover:border-red-500">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <!-- 지도 컨테이너 (전체 화면 채움) -->
+      <div id="map-container" class="w-full map-container-height"></div>
+      <!-- 오버레이 푸터 (지도 위에 float) -->
+      <div class="absolute bottom-0 left-0 right-0 z-[1000] px-4 py-2 flex justify-between items-center bg-black/55 backdrop-blur-sm border-t border-white/10">
+        <div class="text-xs text-white/60 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> OpenStreetMap</div>
+        <div id="map-modal-info" class="text-xs text-white/80 font-mono"></div>
+      </div>
+    </div>
+  </dialog>
+  <!-- 긴급 호우 알림 모달 팝업 -->
+  <dialog id="emergency-modal" class="bg-transparent m-auto inset-0 z-[2000] backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div class="bg-white border-2 border-red-500 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-red-200 bg-red-50 flex justify-between items-center">
+        <h3 id="emergency-modal-title" class="text-lg font-bold text-red-600 tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('emergency-modal').close()" class="text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-0 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-slate-700">
+          <thead class="text-xs text-slate-500 bg-[#F5F5F7] uppercase sticky top-0 border-b border-[#E5E5E5] z-10">
+            <tr>
+              <th scope="col" class="px-4 py-3">지점명</th>
+              <th scope="col" class="px-4 py-3">예상 날짜</th>
+              <th scope="col" class="px-4 py-3">예상 시간</th>
+              <th scope="col" class="px-4 py-3 text-right">강수량 (mm/h)</th>
+            </tr>
+          </thead>
+          <tbody id="emergency-modal-tbody" class="divide-y divide-[#E5E5E5]">
+            <!-- Rows inject -->
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 bg-[#F8F8F8] border-t border-[#E5E5E5] flex justify-end">
+        <button onclick="document.getElementById('emergency-modal').close()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition-colors">확인</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 서브지역(읍면동) 모달 팝업 -->
+  <dialog id="sub-region-modal" class="bg-transparent m-auto inset-0 z-[1500] backdrop:bg-black/40 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4 w-full h-full">
+    <div class="bg-[#FBFBFB] md:bg-slate-800 border border-[#E5E5E5] md:border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 sm:p-5 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-white md:bg-slate-800/80">
+        <h3 id="sub-region-modal-title" class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('sub-region-modal').close()" class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-10 h-10 rounded-full flex items-center justify-center text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 bg-[#F5F5F7] md:bg-slate-900/30">
+        <div id="sub-region-loading" class="flex flex-col items-center justify-center py-20 text-slate-400 gap-4 hidden">
+          <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+          <span class="font-medium">읍·면·동 세부 데이터를 불러오는 중입니다...</span>
+        </div>
+        <div id="sub-region-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+          <!-- Cards inject -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 데이터 출처 Footer -->
+  <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">
+    <i class="fa-solid fa-circle-info"></i> 데이터 출처: 기상청(과거, 단기예측), Open-Meteo(장기예측)
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  
+  <style>
+    .shimmer-effect {
+      animation: shimmer 2s infinite linear;
+    }
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+  </style>
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+<!-- 비동기 동적 스크립트 로더 (파싱 에러 원천 차단) -->
+<script>
+  // 로딩 인디케이터 활성화 (선택 사항이나 기본적으로 화면에 보임)
+  console.log("Requesting JS modules asynchronously...");
+  
+  google.script.run.withSuccessHandler(function(pureJsCode) {
+    console.log("JS modules received. Injecting into DOM...");
+    var script = document.createElement('script');
+    script.innerHTML = pureJsCode;
+    document.head.appendChild(script);
+  }).withFailureHandler(function(error) {
+    console.error("Failed to load JS modules: ", error);
+    alert("스크립트 로딩 중 오류가 발생했습니다. 새로고침 해주세요.");
+  }).getJSCode();
+</script>
+</body>
+</html>
