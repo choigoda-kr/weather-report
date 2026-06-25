@@ -162,6 +162,24 @@ body {
   height: 100%;
 }
 
+/* 팝업 모달 전체화면 클래스 */
+.modal-fullscreen {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 전체화면 모드일 때 내부 컨텐츠(차트/표) 영역 확장 */
+.modal-fullscreen .custom-scrollbar {
+  max-height: none !important;
+  flex: 1 1 auto !important;
+}
 
 /* Leaflet attribution 텍스트 크기 */
 .leaflet-control-attribution {
