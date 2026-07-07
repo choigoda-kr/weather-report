@@ -1,3 +1,891 @@
+const OPEN_METEO_COORDS = {
+    "과천": {
+        "lat": 37.4415,
+        "lon": 126.9872
+    },
+    "여주": {
+        "lat": 37.2038,
+        "lon": 127.5621
+    },
+    "금사": {
+        "lat": 37.389,
+        "lon": 127.5086
+    },
+    "대신": {
+        "lat": 37.3881,
+        "lon": 127.5666
+    },
+    "점동": {
+        "lat": 37.1558,
+        "lon": 127.6766
+    },
+    "가남": {
+        "lat": 37.2038,
+        "lon": 127.5621
+    },
+    "북내": {
+        "lat": 37.3401,
+        "lon": 127.6814
+    },
+    "이천": {
+        "lat": 37.1107,
+        "lon": 127.6176
+    },
+    "모가": {
+        "lat": 37.1594,
+        "lon": 127.4454
+    },
+    "백사": {
+        "lat": 37.3437,
+        "lon": 127.4496
+    },
+    "장호원": {
+        "lat": 37.1107,
+        "lon": 127.6176
+    },
+    "호법": {
+        "lat": 37.2063,
+        "lon": 127.3886
+    },
+    "마장": {
+        "lat": 37.2532,
+        "lon": 127.3317
+    },
+    "신둔": {
+        "lat": 37.2985,
+        "lon": 127.3906
+    },
+    "양평": {
+        "lat": 37.4812,
+        "lon": 127.5108
+    },
+    "단월": {
+        "lat": 37.5245,
+        "lon": 127.6863
+    },
+    "옥천": {
+        "lat": 37.5281,
+        "lon": 127.4538
+    },
+    "용문산": {
+        "lat": 37.4803,
+        "lon": 127.5689
+    },
+    "지평": {
+        "lat": 37.4794,
+        "lon": 127.627
+    },
+    "양동": {
+        "lat": 37.4313,
+        "lon": 127.7419
+    },
+    "화성": {
+        "lat": 37.0744,
+        "lon": 126.8083
+    },
+    "송산": {
+        "lat": 37.2131,
+        "lon": 126.7522
+    },
+    "서신": {
+        "lat": 37.1674,
+        "lon": 126.6938
+    },
+    "향남": {
+        "lat": 37.1195,
+        "lon": 126.9244
+    },
+    "동탄": {
+        "lat": 37.2099,
+        "lon": 127.0993
+    },
+    "도리도": {
+        "lat": 37.1674,
+        "lon": 126.6938
+    },
+    "제부도": {
+        "lat": 37.1674,
+        "lon": 126.6938
+    },
+    "수원": {
+        "lat": 37.3033,
+        "lon": 126.9851
+    },
+    "연천": {
+        "lat": 38.0869,
+        "lon": 127.056
+    },
+    "백학": {
+        "lat": 38.0424,
+        "lon": 126.8794
+    },
+    "미산": {
+        "lat": 38.088,
+        "lon": 126.9387
+    },
+    "신서": {
+        "lat": 38.1786,
+        "lon": 127.1163
+    },
+    "왕징": {
+        "lat": 38.088,
+        "lon": 126.9387
+    },
+    "장남": {
+        "lat": 37.9962,
+        "lon": 126.8787
+    },
+    "청산": {
+        "lat": 37.9945,
+        "lon": 127.0544
+    },
+    "중면": {
+        "lat": 38.1336,
+        "lon": 126.9981
+    },
+    "포천": {
+        "lat": 37.9002,
+        "lon": 127.2284
+    },
+    "이동": {
+        "lat": 38.0364,
+        "lon": 127.4069
+    },
+    "일동": {
+        "lat": 37.9449,
+        "lon": 127.3463
+    },
+    "관인": {
+        "lat": 38.131,
+        "lon": 127.2329
+    },
+    "영북": {
+        "lat": 38.0842,
+        "lon": 127.2906
+    },
+    "창수": {
+        "lat": 37.9932,
+        "lon": 127.1716
+    },
+    "신북": {
+        "lat": 37.9464,
+        "lon": 127.2293
+    },
+    "내촌": {
+        "lat": 37.808,
+        "lon": 127.2266
+    },
+    "소흘": {
+        "lat": 37.8086,
+        "lon": 127.1682
+    },
+    "파주": {
+        "lat": 37.8121,
+        "lon": 126.8177
+    },
+    "탄현": {
+        "lat": 37.813,
+        "lon": 126.7009
+    },
+    "광탄": {
+        "lat": 37.7655,
+        "lon": 126.8755
+    },
+    "진동": {
+        "lat": 37.9048,
+        "lon": 126.7604
+    },
+    "월롱": {
+        "lat": 37.7664,
+        "lon": 126.7588
+    },
+    "적성": {
+        "lat": 37.9495,
+        "lon": 126.9366
+    },
+    "법원": {
+        "lat": 37.8577,
+        "lon": 126.8768
+    },
+    "파평": {
+        "lat": 37.9039,
+        "lon": 126.8774
+    },
+    "도라산": {
+        "lat": 37.9048,
+        "lon": 126.7604
+    },
+    "고양": {
+        "lat": 37.6271,
+        "lon": 126.8736
+    },
+    "주교": {
+        "lat": 37.6271,
+        "lon": 126.8736
+    },
+    "능곡": {
+        "lat": 37.6741,
+        "lon": 126.7577
+    },
+    "일산": {
+        "lat": 37.6741,
+        "lon": 126.7577
+    },
+    "벽제": {
+        "lat": 37.6271,
+        "lon": 126.8736
+    },
+    "신도": {
+        "lat": 37.6271,
+        "lon": 126.8736
+    },
+    "강화": {
+        "lat": 37.7682,
+        "lon": 126.467
+    },
+    "교동": {
+        "lat": 37.7688,
+        "lon": 126.2918
+    },
+    "삼산": {
+        "lat": 37.6764,
+        "lon": 126.3497
+    },
+    "서도": {
+        "lat": 37.6306,
+        "lon": 126.233
+    },
+    "양도": {
+        "lat": 37.6761,
+        "lon": 126.408
+    },
+    "내가": {
+        "lat": 37.7223,
+        "lon": 126.4083
+    },
+    "불은": {
+        "lat": 37.6756,
+        "lon": 126.5246
+    },
+    "길상": {
+        "lat": 37.6298,
+        "lon": 126.4659
+    },
+    "화도": {
+        "lat": 37.63,
+        "lon": 126.4077
+    },
+    "볼음도": {
+        "lat": 37.6306,
+        "lon": 126.233
+    },
+    "백령도": {
+        "lat": 37.9449,
+        "lon": 124.6537
+    },
+    "덕적도": {
+        "lat": 37.2158,
+        "lon": 126.1157
+    },
+    "영흥도": {
+        "lat": 37.2606,
+        "lon": 126.5211
+    },
+    "자월도": {
+        "lat": 37.2616,
+        "lon": 126.2895
+    },
+    "김포": {
+        "lat": 37.6284,
+        "lon": 126.6989
+    },
+    "대곶": {
+        "lat": 37.6292,
+        "lon": 126.5824
+    },
+    "월곶": {
+        "lat": 37.7217,
+        "lon": 126.5249
+    },
+    "통진": {
+        "lat": 37.6753,
+        "lon": 126.5828
+    },
+    "평택": {
+        "lat": 36.9342,
+        "lon": 127.037
+    },
+    "송탄": {
+        "lat": 37.0723,
+        "lon": 127.0392
+    },
+    "안중": {
+        "lat": 36.9813,
+        "lon": 126.9224
+    },
+    "포승": {
+        "lat": 36.9818,
+        "lon": 126.8648
+    },
+    "현덕": {
+        "lat": 36.9353,
+        "lon": 126.9218
+    },
+    "안성": {
+        "lat": 37.0236,
+        "lon": 127.2692
+    },
+    "일죽": {
+        "lat": 37.0673,
+        "lon": 127.4433
+    },
+    "죽산": {
+        "lat": 37.0673,
+        "lon": 127.4433
+    },
+    "고삼": {
+        "lat": 37.1157,
+        "lon": 127.2711
+    },
+    "공도": {
+        "lat": 37.025,
+        "lon": 127.1539
+    },
+    "보개": {
+        "lat": 37.0697,
+        "lon": 127.2701
+    },
+    "금광": {
+        "lat": 36.9768,
+        "lon": 127.326
+    },
+    "미양": {
+        "lat": 36.9783,
+        "lon": 127.2107
+    }
+};
+
+const KMA_FORECAST_GRIDS = {
+    "과천": {
+        "과천": {
+            "nx": 60,
+            "ny": 124
+        }
+    },
+    "여주": {
+        "여주": {
+            "nx": 70,
+            "ny": 119
+        },
+        "금사": {
+            "nx": 69,
+            "ny": 123
+        },
+        "대신": {
+            "nx": 70,
+            "ny": 123
+        },
+        "점동": {
+            "nx": 72,
+            "ny": 118
+        },
+        "가남": {
+            "nx": 70,
+            "ny": 119
+        },
+        "북내": {
+            "nx": 72,
+            "ny": 122
+        }
+    },
+    "이천": {
+        "이천": {
+            "nx": 71,
+            "ny": 117
+        },
+        "모가": {
+            "nx": 68,
+            "ny": 118
+        },
+        "백사": {
+            "nx": 68,
+            "ny": 122
+        },
+        "장호원": {
+            "nx": 71,
+            "ny": 117
+        },
+        "호법": {
+            "nx": 67,
+            "ny": 119
+        },
+        "마장": {
+            "nx": 66,
+            "ny": 120
+        },
+        "신둔": {
+            "nx": 67,
+            "ny": 121
+        }
+    },
+    "양평": {
+        "양평": {
+            "nx": 69,
+            "ny": 125
+        },
+        "단월": {
+            "nx": 72,
+            "ny": 126
+        },
+        "옥천": {
+            "nx": 68,
+            "ny": 126
+        },
+        "용문산": {
+            "nx": 70,
+            "ny": 125
+        },
+        "지평": {
+            "nx": 71,
+            "ny": 125
+        },
+        "양동": {
+            "nx": 73,
+            "ny": 124
+        }
+    },
+    "화성": {
+        "화성": {
+            "nx": 57,
+            "ny": 116
+        },
+        "송산": {
+            "nx": 56,
+            "ny": 119
+        },
+        "서신": {
+            "nx": 55,
+            "ny": 118
+        },
+        "향남": {
+            "nx": 59,
+            "ny": 117
+        },
+        "동탄": {
+            "nx": 62,
+            "ny": 119
+        },
+        "도리도": {
+            "nx": 55,
+            "ny": 118
+        },
+        "제부도": {
+            "nx": 55,
+            "ny": 118
+        }
+    },
+    "수원": {
+        "수원": {
+            "nx": 60,
+            "ny": 121
+        }
+    },
+    "연천": {
+        "연천": {
+            "nx": 61,
+            "ny": 138
+        },
+        "백학": {
+            "nx": 58,
+            "ny": 137
+        },
+        "미산": {
+            "nx": 59,
+            "ny": 138
+        },
+        "신서": {
+            "nx": 62,
+            "ny": 140
+        },
+        "왕징": {
+            "nx": 59,
+            "ny": 138
+        },
+        "장남": {
+            "nx": 58,
+            "ny": 136
+        },
+        "청산": {
+            "nx": 61,
+            "ny": 136
+        },
+        "중면": {
+            "nx": 60,
+            "ny": 139
+        }
+    },
+    "포천": {
+        "포천": {
+            "nx": 64,
+            "ny": 134
+        },
+        "이동": {
+            "nx": 67,
+            "ny": 137
+        },
+        "일동": {
+            "nx": 66,
+            "ny": 135
+        },
+        "관인": {
+            "nx": 64,
+            "ny": 139
+        },
+        "영북": {
+            "nx": 65,
+            "ny": 138
+        },
+        "창수": {
+            "nx": 63,
+            "ny": 136
+        },
+        "신북": {
+            "nx": 64,
+            "ny": 135
+        },
+        "내촌": {
+            "nx": 64,
+            "ny": 132
+        },
+        "소흘": {
+            "nx": 63,
+            "ny": 132
+        }
+    },
+    "파주": {
+        "파주": {
+            "nx": 57,
+            "ny": 132
+        },
+        "탄현": {
+            "nx": 55,
+            "ny": 132
+        },
+        "광탄": {
+            "nx": 58,
+            "ny": 131
+        },
+        "진동": {
+            "nx": 56,
+            "ny": 134
+        },
+        "월롱": {
+            "nx": 56,
+            "ny": 131
+        },
+        "적성": {
+            "nx": 59,
+            "ny": 135
+        },
+        "법원": {
+            "nx": 58,
+            "ny": 133
+        },
+        "파평": {
+            "nx": 58,
+            "ny": 134
+        },
+        "도라산": {
+            "nx": 56,
+            "ny": 134
+        }
+    },
+    "고양": {
+        "고양": {
+            "nx": 58,
+            "ny": 128
+        },
+        "주교": {
+            "nx": 58,
+            "ny": 128
+        },
+        "능곡": {
+            "nx": 56,
+            "ny": 129
+        },
+        "일산": {
+            "nx": 56,
+            "ny": 129
+        },
+        "벽제": {
+            "nx": 58,
+            "ny": 128
+        },
+        "신도": {
+            "nx": 58,
+            "ny": 128
+        }
+    },
+    "강화": {
+        "강화": {
+            "nx": 51,
+            "ny": 131
+        },
+        "교동": {
+            "nx": 48,
+            "ny": 131
+        },
+        "삼산": {
+            "nx": 49,
+            "ny": 129
+        },
+        "서도": {
+            "nx": 47,
+            "ny": 128
+        },
+        "양도": {
+            "nx": 50,
+            "ny": 129
+        },
+        "내가": {
+            "nx": 50,
+            "ny": 130
+        },
+        "불은": {
+            "nx": 52,
+            "ny": 129
+        },
+        "길상": {
+            "nx": 51,
+            "ny": 128
+        },
+        "화도": {
+            "nx": 50,
+            "ny": 128
+        },
+        "볼음도": {
+            "nx": 47,
+            "ny": 128
+        }
+    },
+    "옹진": {
+        "백령도": {
+            "nx": 20,
+            "ny": 135
+        },
+        "덕적도": {
+            "nx": 45,
+            "ny": 119
+        },
+        "영흥도": {
+            "nx": 52,
+            "ny": 120
+        },
+        "자월도": {
+            "nx": 48,
+            "ny": 120
+        },
+        },
+    "김포": {
+        "김포": {
+            "nx": 55,
+            "ny": 128
+        },
+        "대곶": {
+            "nx": 53,
+            "ny": 128
+        },
+        "월곶": {
+            "nx": 52,
+            "ny": 130
+        },
+        "통진": {
+            "nx": 53,
+            "ny": 129
+        }
+    },
+    "평택": {
+        "평택": {
+            "nx": 61,
+            "ny": 113
+        },
+        "송탄": {
+            "nx": 61,
+            "ny": 116
+        },
+        "안중": {
+            "nx": 59,
+            "ny": 114
+        },
+        "포승": {
+            "nx": 58,
+            "ny": 114
+        },
+        "현덕": {
+            "nx": 59,
+            "ny": 113
+        }
+    },
+    "안성": {
+        "안성": {
+            "nx": 65,
+            "ny": 115
+        },
+        "일죽": {
+            "nx": 68,
+            "ny": 116
+        },
+        "죽산": {
+            "nx": 68,
+            "ny": 116
+        },
+        "고삼": {
+            "nx": 65,
+            "ny": 117
+        },
+        "공도": {
+            "nx": 63,
+            "ny": 115
+        },
+        "보개": {
+            "nx": 65,
+            "ny": 116
+        },
+        "금광": {
+            "nx": 66,
+            "ny": 114
+        },
+        "미양": {
+            "nx": 64,
+            "ny": 114
+        }
+    }
+};
+
+const KMA_AWS_STATIONS = {
+    "과천": {
+        "과천": "590"
+    },
+    "여주": {
+        "여주": "465",
+        "금사": "576",
+        "대신": "577",
+        "점동": "579",
+        "가남": "580",
+        "북내": "569"
+    },
+    "이천": {
+        "이천": "203",
+        "모가": "555",
+        "백사": "556",
+        "장호원": "557",
+        "호법": "558",
+        "마장": "559",
+        "신둔": "578"
+    },
+    "양평": {
+        "양평": "202",
+        "단월": "565",
+        "옥천": "566",
+        "용문산": "567",
+        "지평": "568",
+        "양동": "575"
+    },
+    "화성": {
+        "화성": "488",
+        "송산": "548",
+        "서신": "549",
+        "향남": "551",
+        "동탄": "586",
+        "도리도": "587",
+        "제부도": "589"
+    },
+    "수원": {
+        "수원": "119"
+    },
+    "연천": {
+        "연천": "491",
+        "백학": "522",
+        "미산": "523",
+        "신서": "524",
+        "왕징": "525",
+        "장남": "526",
+        "청산": "527",
+        "중면": "529"
+    },
+    "포천": {
+        "포천": "473",
+        "이동": "514",
+        "일동": "515",
+        "관인": "516",
+        "영북": "517",
+        "창수": "518",
+        "신북": "519",
+        "내촌": "520",
+        "소흘": "530"
+    },
+    "파주": {
+        "파주": "99",
+        "탄현": "531",
+        "광탄": "532",
+        "진동": "533",
+        "월롱": "534",
+        "적성": "535",
+        "법원": "536",
+        "파평": "537",
+        "도라산": "538"
+    },
+    "고양": {
+        "고양": "540",
+        "주교": "541",
+        "능곡": "542",
+        "일산": "543",
+        "벽제": "544",
+        "신도": "545"
+    },
+    "강화": {
+        "강화": "201",
+        "교동": "503",
+        "삼산": "504",
+        "서도": "505",
+        "양도": "506",
+        "내가": "507",
+        "불은": "508",
+        "길상": "509",
+        "화도": "510",
+        "볼음도": "511"
+    },
+    "옹진": {
+        "백령도": "102",
+        "덕적도": "501",
+        "영흥도": "502",
+        "자월도": "513",
+        },
+    "김포": {
+        "김포": "441",
+        "대곶": "546",
+        "월곶": "547",
+        "통진": "588"
+    },
+    "평택": {
+        "평택": "356",
+        "송탄": "571",
+        "안중": "572",
+        "포승": "573",
+        "현덕": "574"
+    },
+    "안성": {
+        "안성": "470",
+        "일죽": "560",
+        "죽산": "561",
+        "고삼": "563",
+        "공도": "581",
+        "보개": "582",
+        "금광": "583",
+        "미양": "585"
+    }
+};
+
 /**
  * 기상청 및 Open-Meteo API 병렬 호출을 통한 하이브리드 날씨 데이터 획득
  * @param {string} latStr - 콤마로 구분된 위도 문자열 (예: "37.5665,35.1796")
@@ -7,181 +895,202 @@
  * @param {string} endDateStr - 조회 종료일 (예: "2026-06-22")
  * @returns {string} - JSON 형태의 통합 기상 데이터 문자열
  */
-function getMergedWeatherData(latStr, lonStr, locNamesStr, startDateStr, endDateStr) {
+
+function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
     const lats = latStr.split(',');
     const lons = lonStr.split(',');
-    const locNames = locNamesStr ? locNamesStr.split(',') : [];
+    const cities = cityStr.split(',');
+    const matchNames = matchNameStr.split(',');
     
-    // KMA API Key (Script Properties에서 로드)
-    const scriptProps = PropertiesService.getScriptProperties();
-    const kmaApiKey = scriptProps.getProperty('KMA_API_KEY');
-    const awsApiKey = scriptProps.getProperty('GG_AWS_API_KEY') || "4669acbc5df0400cb20cd2b1967487bd";
-    
-    if (!kmaApiKey) {
-        throw new Error('KMA_API_KEY is not set in Script Properties.');
+    // 1. 시트 연결
+    let ss;
+    try {
+        ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch(e) {
+        return JSON.stringify([{ error: "SHEET_ERROR", message: "스프레드시트 연결 실패" }]);
     }
     
-    const { baseDate, baseTime } = getKmaBaseDateTime();
-    const { baseDate: fcstBaseDate, baseTime: fcstBaseTime } = getKmaFcstBaseDateTime();
-    const requests = [];
-    
-    // 1. Open-Meteo 요청 생성
-    const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latStr}&longitude=${lonStr}&current=weather_code,temperature_2m&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&past_days=0&forecast_days=10`;
-    requests.push({ url: omUrl, muteHttpExceptions: true });
-    
-    // 2. KMA 초단기실황 및 단기예보 요청
-    lats.forEach((lat, i) => {
-        const lon = lons[i];
-        const grid = dfs_xy_conv("toXY", parseFloat(lat), parseFloat(lon));
+    // 2. 신선도 및 데이터 파싱 함수
+    function parseCacheSheet(sheetName, thresholdHours) {
+        const sheet = ss.getSheetByName(sheetName);
+        if (!sheet) return { stale: true, lastUpdated: "없음", data: [] };
+        const data = sheet.getDataRange().getValues();
+        if (data.length <= 1) return { stale: true, lastUpdated: "없음", data: [] };
         
-        const ncstUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst?serviceKey=${kmaApiKey}&pageNo=1&numOfRows=10&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${grid.x}&ny=${grid.y}`;
-        const fcstUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${kmaApiKey}&pageNo=1&numOfRows=300&dataType=JSON&base_date=${fcstBaseDate}&base_time=${fcstBaseTime}&nx=${grid.x}&ny=${grid.y}`;
-        
-        requests.push({ url: ncstUrl, muteHttpExceptions: true });
-        requests.push({ url: fcstUrl, muteHttpExceptions: true });
-    });
-
-    // 3. KMA API Hub (과거 기간 일자별 전체 조회)
-    const awsStartIdx = requests.length;
-    const KMA_STN_MAP = {
-        "과천": "590", "여주": "465", "이천": "203", "양평": "202",
-        "화성": "488", "수원": "119", "연천": "491", "포천": "473",
-        "파주": "99", "고양": "540", "강화": "201", "옹진": "102",
-        "김포": "441", "평택": "356", "안성": "470"
-    };
-    
-    // YYYYMMDDHHMI format
-    const formatKmaTime = (d) => {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const hh = String(d.getHours()).padStart(2, '0');
-        return `${yyyy}${mm}${dd}${hh}00`;
-    };
-
-    const apiHubKey = PropertiesService.getScriptProperties().getProperty('KMA_API_KEY');
-    let tm1 = "", tm2 = "";
-    
-    if (startDateStr && endDateStr) {
-        const sDate = new Date(startDateStr);
-        sDate.setHours(0, 0, 0, 0);
-        const eDate = new Date(endDateStr);
-        eDate.setHours(23, 0, 0, 0);
-        
-        tm1 = formatKmaTime(sDate);
-        tm2 = formatKmaTime(eDate);
-        
-        locNames.forEach(locName => {
-            const stn = KMA_STN_MAP[locName] || "108"; // default seoul
-            requests.push({
-                url: `https://apihub.kma.go.kr/api/typ01/url/awsh.php?tm1=${tm1}&tm2=${tm2}&stn=${stn}&help=0&authKey=${apiHubKey}`,
-                muteHttpExceptions: true
-            });
-        });
-    }
-    
-    // 병렬 호출
-    const responses = UrlFetchApp.fetchAll(requests);
-    
-    // OM 파싱
-    const omResponseText = responses[0].getContentText();
-    let omData = JSON.parse(omResponseText);
-    if (!Array.isArray(omData)) {
-        if (omData.error) throw new Error(`Open-Meteo Error: ${omData.reason}`);
-        omData = [omData];
-    }
-    
-    // KMA API Hub 데이터 파싱 및 매핑
-    const locHistData = {}; // locName -> { daily: {}, hourly: {}, total: 0 }
-    locNames.forEach(name => {
-        locHistData[name] = { daily: {}, hourly: {}, total: 0 };
-    });
-    
-    for(let i = awsStartIdx; i < responses.length; i++) {
-        const locName = locNames[i - awsStartIdx];
+        let stale = true;
+        let lastUpdatedStr = "알 수 없음";
         try {
-            const text = responses[i].getContentText();
-            const lines = text.split('\n');
-            lines.forEach(line => {
-                if (line.startsWith('#') || line.trim() === '') return;
-                const parts = line.trim().split(/\s+/);
-                if (parts.length >= 10) {
-                    const timeStr = parts[0]; 
-                    const rn1hrStr = parts[6];
-                    
-                    if (timeStr && timeStr.length === 12 && rn1hrStr && rn1hrStr !== '-9.0' && rn1hrStr !== '-99.0' && rn1hrStr !== '-999') {
-                        const rn1hr = parseFloat(rn1hrStr) || 0;
-                        if (rn1hr >= 0) { 
-                            const dateKey = timeStr.substring(0, 8); 
-                            const hourKey = timeStr.substring(8, 10); 
-                            
-                            locHistData[locName].total += rn1hr;
-                            if (!locHistData[locName].daily[dateKey]) locHistData[locName].daily[dateKey] = 0;
-                            locHistData[locName].daily[dateKey] += rn1hr;
-                            
-                            const isoTime = `${dateKey.substring(0,4)}-${dateKey.substring(4,6)}-${dateKey.substring(6,8)}T${hourKey}:00`;
-                            locHistData[locName].hourly[isoTime] = rn1hr;
-                        }
+            const f1Value = sheet.getRange('F1').getValue();
+            const m = f1Value.toString().match(/마지막 갱신 시각: (.*?)]/);
+            if (m) {
+                lastUpdatedStr = m[1];
+                const lastUpdTime = new Date(lastUpdatedStr.replace(' ', 'T') + '+09:00').getTime();
+                const now = new Date().getTime();
+                const hoursDiff = (now - lastUpdTime) / (1000 * 60 * 60);
+                if (hoursDiff <= thresholdHours) {
+                    stale = false;
+                }
+            }
+        } catch(e) {}
+        
+        return { stale: stale, lastUpdated: lastUpdatedStr, data: data };
+    }
+    
+    // 3. 시트 로드
+    const pastCache = parseCacheSheet('과거강수량_Cache', 2);
+    const fcstCache = parseCacheSheet('예상강수량_Cache', 2);
+    const midCache = parseCacheSheet('중기예보_Cache', 4);
+    
+    if (pastCache.data.length === 0 && fcstCache.data.length === 0 && midCache.data.length === 0) {
+        return JSON.stringify([{ error: "CACHE_MISS", message: "데이터 집계 중입니다." }]);
+    }
+    
+    // 4. Open-Meteo 실시간 현재 날씨 가져오기 (가벼운 호출 1회)
+    const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latStr}&longitude=${lonStr}&current=weather_code,temperature_2m,precipitation&timezone=Asia%2FSeoul`;
+    let omData = [];
+    try {
+        const resp = UrlFetchApp.fetch(omUrl, { muteHttpExceptions: true });
+        let json = JSON.parse(resp.getContentText());
+        omData = Array.isArray(json) ? json : [json];
+    } catch(e) {}
+
+    // 5. 날짜 매칭용
+    function fastFormatDate(d, formatStr) {
+        const pad = function(n) { return n < 10 ? '0'+n : n; };
+        const yyyy = d.getFullYear();
+        const MM = pad(d.getMonth() + 1);
+        const dd = pad(d.getDate());
+        const HH = pad(d.getHours());
+        
+        if (formatStr === "yyyy-MM-dd HH:00") return yyyy + '-' + MM + '-' + dd + ' ' + HH + ':00';
+        if (formatStr === "yyyyMMddHH00") return yyyy + MM + dd + HH + '00';
+        if (formatStr === "yyyy-MM-dd'T'HH:00") return yyyy + '-' + MM + '-' + dd + 'T' + HH + ':00';
+        if (formatStr === "yyyy-MM-dd") return yyyy + '-' + MM + '-' + dd;
+        
+        return Utilities.formatDate(d, "Asia/Seoul", formatStr);
+    }
+
+    let filterStart = null;
+    let filterEnd = null;
+    if (startDateStr && endDateStr) {
+        filterStart = new Date(startDateStr);
+        filterStart.setHours(0,0,0,0);
+        filterEnd = new Date(endDateStr);
+        filterEnd.setHours(23,59,59,999);
+    }
+    const sDateObj = filterStart ? fastFormatDate(filterStart, "yyyy-MM-dd") : null;
+    const eDateObj = filterEnd ? fastFormatDate(filterEnd, "yyyy-MM-dd") : null;
+    
+    // 6. 결과 조립
+    const mergedResults = lats.map((lat, index) => {
+        const city = cities[index];
+        const matchName = matchNames[index];
+        
+        const historyDaily = {};
+        const historyHourly = {};
+        let historyTotal = 0;
+        
+        for (let i = 1; i < pastCache.data.length; i++) {
+            const row = pastCache.data[i];
+            if (row[0] === city && row[1] === matchName) {
+                let dtStr = row[3]; // "YYYY-MM-DD HH:00"
+                if (dtStr instanceof Date) {
+                    dtStr = fastFormatDate(dtStr, "yyyy-MM-dd HH:00");
+                } else {
+                    dtStr = dtStr.toString();
+                }
+                const pcp = parseFloat(row[4]) || 0;
+                
+                const dKey = dtStr.split(' ')[0].split('T')[0]; // "YYYY-MM-DD"
+                if (sDateObj && eDateObj) {
+                    if (dKey >= sDateObj && dKey <= eDateObj) {
+                        historyTotal += pcp;
+                        if(!historyDaily[dKey]) historyDaily[dKey] = 0;
+                        historyDaily[dKey] += pcp;
+                        historyHourly[dtStr.replace(' ', 'T')] = pcp;
                     }
                 }
-            });
-        } catch(e) {}
-    }
+            }
+        }
+        const dailyDates = Object.keys(historyDaily).sort();
+        const dailyPrecips = dailyDates.map(d => parseFloat(historyDaily[d].toFixed(1)));
+        const hourlyTimes = Object.keys(historyHourly).sort();
+        const hourlyPrecips = hourlyTimes.map(t => parseFloat(historyHourly[t].toFixed(1)));
 
-    // JSON 조립
-    const mergedResults = lats.map((lat, index) => {
-        const ncstIndex = 1 + (index * 2);
-        const fcstIndex = ncstIndex + 1;
+        const fcst24hObj = {};
+        for (let i = 1; i < fcstCache.data.length; i++) {
+            const row = fcstCache.data[i];
+            if (row[0] === city && row[1] === matchName) {
+                let dtStr = row[2]; // "YYYYMMDDHH00"
+                if (dtStr instanceof Date) {
+                    dtStr = fastFormatDate(dtStr, "yyyyMMddHH00");
+                } else {
+                    dtStr = dtStr.toString();
+                }
+                const pcp = row[3];
+                fcst24hObj[dtStr] = pcp;
+            }
+        }
         
-        let ncstData = {}, fcstData = {};
-        try {
-            const ncstText = responses[ncstIndex].getContentText();
-            if (!ncstText.trim().startsWith('<')) ncstData = JSON.parse(ncstText);
-        } catch (e) {}
+        const midHourlyObj = {};
+        const midDailyMap = {};
+        for (let i = 1; i < midCache.data.length; i++) {
+            const row = midCache.data[i];
+            if (row[0] === city && row[1] === matchName) {
+                let dtStr = row[2]; // "YYYY-MM-DDTHH:00"
+                if (dtStr instanceof Date) {
+                    dtStr = fastFormatDate(dtStr, "yyyy-MM-dd'T'HH:00");
+                } else {
+                    dtStr = dtStr.toString();
+                }
+                const pcp = parseFloat(row[3]) || 0;
+                midHourlyObj[dtStr] = pcp;
+                
+                const dKey = dtStr.split('T')[0].split(' ')[0];
+                if(!midDailyMap[dKey]) midDailyMap[dKey] = 0;
+                midDailyMap[dKey] += pcp;
+            }
+        }
+        const midDailyObj = { time: [], precipitation_sum: [] };
+        const sortedMidDaily = Object.keys(midDailyMap).sort();
+        for (let d of sortedMidDaily) {
+            midDailyObj.time.push(d);
+            midDailyObj.precipitation_sum.push(parseFloat(midDailyMap[d].toFixed(1)));
+        }
         
-        try {
-            const fcstText = responses[fcstIndex].getContentText();
-            if (!fcstText.trim().startsWith('<')) fcstData = JSON.parse(fcstText);
-        } catch (e) {}
+        let isStale = pastCache.stale || fcstCache.stale || midCache.stale;
+        if(fcstCache.data.length <= 1) isStale = true;
         
-        const kmaCurrent = extractKmaNcst(ncstData);
-        const kmaForecast = extractKmaFcst24h(fcstData);
-        const omForecast10d = omData[index]?.daily || {};
-        const omForecast10dHourly = omData[index]?.hourly || {};
+        let temp = omData[index]?.current?.temperature_2m;
+        let precip = omData[index]?.current?.precipitation || 0;
+        let code = omData[index]?.current?.weather_code || 0;
         
-        const locName = locNames[index];
-        const histData = locHistData[locName];
-        
-        // 날짜/시간 정렬 및 추출
-        const sortedDates = Object.keys(histData.daily).sort();
-        const dailyDates = sortedDates.map(d => `${d.substring(0,4)}-${d.substring(4,6)}-${d.substring(6,8)}`);
-        const dailyPrecips = sortedDates.map(d => parseFloat(histData.daily[d].toFixed(1)));
-        
-        const sortedTimes = Object.keys(histData.hourly).sort();
-        const hourlyTimes = sortedTimes;
-        const hourlyPrecips = sortedTimes.map(t => parseFloat(histData.hourly[t].toFixed(1)));
-
         return {
             lat: lat,
             lon: lons[index],
-            name: locName,
+            city: city,
+            matchName: matchName,
+            isStale: isStale,
+            lastUpdated: `과거:${pastCache.lastUpdated} | 예상:${fcstCache.lastUpdated} | 중기:${midCache.lastUpdated}`,
             current: {
-                temp: kmaCurrent.T1H !== undefined ? kmaCurrent.T1H : omData[index]?.current?.temperature_2m,
-                precip: kmaCurrent.RN1 !== undefined ? kmaCurrent.RN1 : 0
+                temp: temp !== undefined ? temp : 0,
+                precip: precip,
+                code: code
             },
-            historyTotal: parseFloat(histData.total.toFixed(1)),
+            historyTotal: parseFloat(historyTotal.toFixed(1)),
             dailyDates: dailyDates,
             dailyPrecips: dailyPrecips,
             historyHourlyTimes: hourlyTimes,
             historyHourlyPrecips: hourlyPrecips,
-            forecast24h: kmaForecast,
-            forecast10d: omForecast10d,
-            forecast10dHourly: omForecast10dHourly
+            forecast24h: fcst24hObj,
+            forecast10d: midDailyObj,
+            forecast10dHourly: midHourlyObj
         };
     });
     
     return JSON.stringify(mergedResults);
 }
+
 
 function extractKmaNcst(data) {
     const result = {};
@@ -259,4 +1168,354 @@ function getJSCode() {
   var pureJs = data.replace(regex, '') + '\n' + logic.replace(regex, '') + '\n' + ui.replace(regex, '');
   
   return pureJs;
+}
+
+/**
+ * 24시간 예상 강수량(동네예보) 구글 시트 캐싱 배치 함수 (3시간 트리거용)
+ */
+function updateForecastPrecipitationCache() {
+    Logger.log("총 91개 관측소 예상 강수량 데이터 요청 시작...");
+    
+    const scriptProps = PropertiesService.getScriptProperties();
+    const kmaApiKey = scriptProps.getProperty('KMA_API_KEY');
+    
+    if (!kmaApiKey) {
+        Logger.log("API 키가 없습니다.");
+        return;
+    }
+    
+    const { baseDate, baseTime } = getKmaFcstBaseDateTime();
+    
+    const targetGrids = [];
+    for (const city in KMA_FORECAST_GRIDS) {
+        for (const station in KMA_FORECAST_GRIDS[city]) {
+            targetGrids.push({
+                city: city,
+                station: station,
+                nx: KMA_FORECAST_GRIDS[city][station].nx,
+                ny: KMA_FORECAST_GRIDS[city][station].ny
+            });
+        }
+    }
+    
+    const sheetData = []; 
+    const chunkSize = 20; 
+    
+    for (let i = 0; i < targetGrids.length; i += chunkSize) {
+        const chunk = targetGrids.slice(i, i + chunkSize);
+        const requests = chunk.map(target => {
+            const fcstUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${kmaApiKey}&pageNo=1&numOfRows=300&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${target.nx}&ny=${target.ny}`;
+            return { url: fcstUrl, muteHttpExceptions: true };
+        });
+        
+        const responses = UrlFetchApp.fetchAll(requests);
+        
+        responses.forEach((response, index) => {
+            const target = chunk[index];
+            if (response.getResponseCode() === 200) {
+                try {
+                    const data = JSON.parse(response.getContentText());
+                    if (data && data.response && data.response.body && data.response.body.items) {
+                        const items = data.response.body.items.item;
+                        items.forEach(item => {
+                            if (item.category === "PCP") {
+                                const fcstDate = item.fcstDate;
+                                const fcstTime = item.fcstTime;
+                                const isoTime = `${fcstDate.substring(0,4)}-${fcstDate.substring(4,6)}-${fcstDate.substring(6,8)}T${fcstTime.substring(0,2)}:00:00+09:00`;
+                                
+                                let pcpValue = 0;
+                                if (item.fcstValue !== "강수없음") {
+                                    pcpValue = parseFloat(item.fcstValue.replace(/[^0-9.]/g, '')) || 0;
+                                }
+                                
+                                sheetData.push([target.city, target.station, isoTime, pcpValue]);
+                            }
+                        });
+                    }
+                } catch(e) {
+                    Logger.log(`파싱 에러 (${target.city} ${target.station}): ${e.message}`);
+                }
+            } else {
+                Logger.log(`API 에러 (${target.city} ${target.station}): ${response.getResponseCode()}`);
+            }
+        });
+        
+        if (i + chunkSize < targetGrids.length) {
+            Utilities.sleep(1500); 
+        }
+    }
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('예상강수량_Cache');
+    if (!sheet) {
+        sheet = ss.insertSheet('예상강수량_Cache');
+    }
+    
+    sheet.clearContents();
+    sheet.appendRow(['지역명(City)', '관측소명(Station)', '예측일시(ISO)', '1시간예상강수량(PCP)']);
+    
+    if (sheetData.length > 0) {
+        sheet.getRange(2, 1, sheetData.length, 4).setValues(sheetData);
+    // 마지막 갱신 시각 기록
+    const now = new Date();
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
+
+        Logger.log(`예상강수량 적재 완료. 총 ${sheetData.length}행 저장.`);
+    } else {
+        Logger.log('저장할 예상강수량 데이터가 없습니다.');
+    }
+}
+
+/**
+ * [배치 작업] 1시간마다 실행되어 15개 지역 전체 하위 AWS 관측소 14일치 데이터를 구글 시트에 캐싱
+ */
+function updatePastPrecipitationCache() {
+    const scriptProps = PropertiesService.getScriptProperties();
+    const apiHubKey = scriptProps.getProperty('KMA_API_HUB_KEY');
+    if (!apiHubKey) {
+        Logger.log('KMA_API_HUB_KEY is not set.');
+        return;
+    }
+
+    let ss;
+    try {
+        ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch(e) {
+        Logger.log('Cannot get Active Spreadsheet (must be bound to a Google Sheet).');
+        return;
+    }
+    
+    let sheet = ss.getSheetByName('과거강수량_Cache');
+    if (!sheet) {
+        sheet = ss.insertSheet('과거강수량_Cache');
+    }
+
+    const formatKmaTime = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        return `${yyyy}${mm}${dd}${hh}00`;
+    };
+
+    const eDate = new Date();
+    const sDate = new Date();
+    sDate.setDate(sDate.getDate() - 14);
+    sDate.setHours(0, 0, 0, 0);
+
+    const tm1 = formatKmaTime(sDate);
+    const tm2 = formatKmaTime(eDate);
+
+    const requests = [];
+    const stationMeta = [];
+
+    for (const city in KMA_AWS_STATIONS) {
+        for (const stationName in KMA_AWS_STATIONS[city]) {
+            const stnCode = KMA_AWS_STATIONS[city][stationName];
+            requests.push({
+                url: `https://apihub.kma.go.kr/api/typ01/url/awsh.php?tm1=${tm1}&tm2=${tm2}&stn=${stnCode}&help=0&authKey=${apiHubKey}`,
+                muteHttpExceptions: true
+            });
+            stationMeta.push({ city, stationName, stnCode });
+        }
+    }
+
+    Logger.log(`총 ${requests.length}개 관측소 데이터 요청 시작...`);
+    
+    const chunkSize = 30;
+    let allResponses = [];
+    for (let i = 0; i < requests.length; i += chunkSize) {
+        const chunk = requests.slice(i, i + chunkSize);
+        const responses = UrlFetchApp.fetchAll(chunk);
+        allResponses = allResponses.concat(responses);
+        Utilities.sleep(500);
+    }
+
+    const rows = [];
+    rows.push(['지역명(City)', '관측소명(Station)', 'STN번호', '관측일시', '1시간누적강수량']);
+
+    for (let i = 0; i < allResponses.length; i++) {
+        const meta = stationMeta[i];
+        try {
+            const text = allResponses[i].getContentText();
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                if (line.startsWith('#') || line.trim() === '') return;
+                const parts = line.trim().split(/\s+/);
+                if (parts.length >= 10) {
+                    const timeStr = parts[0]; 
+                    const rn1hrStr = parts[6];
+                    
+                    if (timeStr && timeStr.length === 12 && rn1hrStr && rn1hrStr !== '-9.0' && rn1hrStr !== '-99.0' && rn1hrStr !== '-999') {
+                        const rn1hr = parseFloat(rn1hrStr) || 0;
+                        if (rn1hr >= 0) {
+                            const y = timeStr.substring(0, 4);
+                            const m = timeStr.substring(4, 6);
+                            const d = timeStr.substring(6, 8);
+                            const h = timeStr.substring(8, 10);
+                            const isoTime = `${y}-${m}-${d}T${h}:00`;
+                            
+                            rows.push([meta.city, meta.stationName, meta.stnCode, isoTime, rn1hr]);
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            Logger.log(`파싱 에러 [${meta.city} - ${meta.stationName}]: ${e.message}`);
+        }
+    }
+
+    sheet.clear();
+    if (rows.length > 0) {
+        sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    // 마지막 갱신 시각 기록
+    const now = new Date();
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
+
+    }
+    Logger.log(`구글 시트 적재 완료. 총 ${rows.length - 1}행 저장.`);
+}
+
+/**
+ * [임시 유틸리티] 97개 지점 중 과거강수량 데이터가 들어오지 않는 누락 지점을 찾는 함수
+ */
+function findMissingStations() {
+    let ss;
+    try {
+        ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch(e) {
+        Logger.log('시트에 연결할 수 없습니다.');
+        return;
+    }
+    
+    let sheet = ss.getSheetByName('과거강수량_Cache');
+    if (!sheet) {
+        Logger.log('과거강수량_Cache 시트가 존재하지 않습니다.');
+        return;
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const existing = new Set();
+    // 관측소명은 2번째 열(인덱스 1)
+    for(let i=1; i<data.length; i++) {
+        existing.add(data[i][1]);
+    }
+
+    const missing = [];
+    for(const city in KMA_AWS_STATIONS) {
+        for(const stn in KMA_AWS_STATIONS[city]) {
+            if(!existing.has(stn)) {
+                missing.push(city + ' ' + stn);
+            }
+        }
+    }
+
+    Logger.log('========== 누락된 지점 목록 ==========');
+    if (missing.length === 0) {
+        Logger.log('누락된 지점이 없습니다. 모두 들어와 있습니다.');
+    } else {
+        missing.forEach(m => Logger.log(m));
+        Logger.log('총 ' + missing.length + '개 지점이 누락되었습니다.');
+        Logger.log('======================================');
+        Logger.log('위의 지점 목록을 안티팀장에게 알려주세요!');
+    }
+}
+
+/**
+ * 10일 중기예보(Open-Meteo) 구글 시트 캐싱 배치 함수
+ */
+function updateOpenMeteoCache() {
+    const stnNames = Object.keys(OPEN_METEO_COORDS);
+    Logger.log("총 " + stnNames.length + "개 관측소 Open-Meteo 데이터 요청 시작...");
+    
+    // Open-Meteo는 한 번에 여러 위경도를 요청할 수 있음
+    const lats = stnNames.map(name => OPEN_METEO_COORDS[name].lat).join(',');
+    const lons = stnNames.map(name => OPEN_METEO_COORDS[name].lon).join(',');
+    
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&hourly=precipitation&timezone=Asia/Seoul&forecast_days=10`;
+    
+    let response;
+    try {
+        response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    } catch(e) {
+        Logger.log("Open-Meteo API 호출 실패: " + e.toString());
+        return;
+    }
+    
+    const code = response.getResponseCode();
+    if (code !== 200) {
+        Logger.log("Open-Meteo API 에러: " + code + " - " + response.getContentText());
+        return;
+    }
+    
+    let json;
+    try {
+        json = JSON.parse(response.getContentText());
+    } catch(e) {
+        Logger.log("Open-Meteo JSON 파싱 실패");
+        return;
+    }
+    
+    // 만약 1개의 지점만 요청했다면 배열이 아니라 단일 객체로 리턴되므로 배열로 묶어줌
+    if (!Array.isArray(json)) {
+        json = [json];
+    }
+    
+    let ss;
+    try {
+        ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch(e) {
+        Logger.log("시트에 연결할 수 없습니다. " + e.toString());
+        return;
+    }
+    
+    let sheet = ss.getSheetByName('중기예보_Cache');
+    if (!sheet) {
+        sheet = ss.insertSheet('중기예보_Cache');
+    }
+    sheet.clear();
+    
+    // 시군 매핑을 위해 KMA_AWS_STATIONS 뒤집기
+    const stnToCity = {};
+    for (const city in KMA_AWS_STATIONS) {
+        for (const stn in KMA_AWS_STATIONS[city]) {
+            stnToCity[stn] = city;
+        }
+    }
+    
+    const sheetData = [];
+    sheetData.push(["시군", "관측소명", "예측일시(시간별)", "예상강수량(mm)"]);
+    
+    json.forEach((locData, index) => {
+        const stnName = stnNames[index];
+        const city = stnToCity[stnName] || "";
+        
+        if (locData && locData.hourly && locData.hourly.time) {
+            const times = locData.hourly.time;
+            const precip = locData.hourly.precipitation;
+            
+            for (let i = 0; i < times.length; i++) {
+                const dateStr = times[i]; // "YYYY-MM-DD"
+                const pcpValue = precip[i] !== null ? precip[i] : 0;
+                sheetData.push([city, stnName, dateStr, pcpValue]);
+            }
+        }
+    });
+    
+    if (sheetData.length > 1) {
+        sheet.getRange(1, 1, sheetData.length, 4).setValues(sheetData);
+    // 마지막 갱신 시각 기록
+    const now = new Date();
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
+
+        Logger.log("구글 시트 적재 완료. 총 " + (sheetData.length - 1) + "행 저장.");
+    } else {
+        Logger.log("저장할 중기예보 데이터가 없습니다.");
+    }
 }

@@ -1,8 +1,8 @@
-<script>
+﻿<script>
 function initSkeleton() {
   const grid = document.getElementById('weather-grid');
   grid.innerHTML = '';
-  // 15개의 스켈레톤 UI 생성
+  // 15媛쒖쓽 ?ㅼ펷?덊넠 UI ?앹꽦
   for(let i=0; i<15; i++) {
     grid.innerHTML += `
       <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none">
@@ -20,7 +20,7 @@ function initSkeleton() {
   }
 }
 
-// 4. 모달 관련 전역 함수
+// 4. 紐⑤떖 愿???꾩뿭 ?⑥닔
 window.toggleHourlyData = function(dateIndex) {
   const el = document.getElementById(`hourly-row-${dateIndex}`);
   if(el.classList.contains('hidden')) {
@@ -43,11 +43,11 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
     if(hourlyTimes[i].startsWith(dateStr)) {
       const itemTime = new Date(hourlyTimes[i]);
       
-      // 과거 강수내역 모달(history)의 경우: 오늘 날짜라면 현재 시각 이전까지만 표출
+      // 怨쇨굅 媛뺤닔?댁뿭 紐⑤떖(history)??寃쎌슦: ?ㅻ뒛 ?좎쭨?쇰㈃ ?꾩옱 ?쒓컖 ?댁쟾源뚯?留??쒖텧
       if (colorTheme === 'history' && itemTime > now) {
         continue;
       }
-      // 향후 10일 예상 모달(future)의 경우: 오늘 날짜라면 현재 시각 이후만 표출
+      // ?ν썑 10???덉긽 紐⑤떖(future)??寃쎌슦: ?ㅻ뒛 ?좎쭨?쇰㈃ ?꾩옱 ?쒓컖 ?댄썑留??쒖텧
       if (colorTheme === 'future' && itemTime <= now) {
         continue;
       }
@@ -59,7 +59,7 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
   }
   
   if(hoursData.length === 0) {
-    return `<div class="text-center text-xs text-slate-400 py-2">시간별 데이터가 없습니다.<\/div>`;
+    return `<div class="text-center text-xs text-slate-400 py-2">?쒓컙蹂??곗씠?곌? ?놁뒿?덈떎.<\/div>`;
   }
   
   let chartHtml = `<div class="flex overflow-x-auto gap-2 pb-2 pt-1 custom-scrollbar-hide snap-x">`;
@@ -89,45 +89,24 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
   
   if(maxPrecip > 0) {
     const peakTime = hoursData[maxIdx].time.substring(11, 16);
-    chartHtml = `<div class="text-[11px] mb-2 text-red-500 font-bold tracking-tight"><i class="fa-solid fa-triangle-exclamation"><\/i> ${peakTime} 피크 집중 강수 (${maxPrecip.toFixed(1)}mm)<\/div>` + chartHtml;
+    chartHtml = `<div class="text-[11px] mb-2 text-red-500 font-bold tracking-tight"><i class="fa-solid fa-triangle-exclamation"><\/i> ${peakTime} ?쇳겕 吏묒쨷 媛뺤닔 (${maxPrecip.toFixed(1)}mm)<\/div>` + chartHtml;
   }
   return chartHtml;
 }
 
-const holidays2026 = [
-  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-03-01', '2026-03-02',
-  '2026-05-05', '2026-05-24', '2026-05-25', '2026-06-06', '2026-08-15', '2026-09-24',
-  '2026-09-25', '2026-09-26', '2026-09-28', '2026-10-03', '2026-10-09', '2026-12-25'
-];
-
-function getDayAndColor(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return { text: dateStr, colorClass: 'text-[#1D1D1F] md:text-slate-300' };
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  let colorClass = 'text-[#1D1D1F] md:text-slate-300';
-  if (d.getDay() === 0 || holidays2026.includes(dateStr)) {
-    colorClass = 'text-red-500 font-bold';
-  } else if (d.getDay() === 6) {
-    colorClass = 'text-blue-500 font-bold';
-  }
-  return { text: `${dateStr} (${days[d.getDay()]})`, colorClass };
-}
-
 window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, total) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"><\/i> ${name} 과거 강수내역`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"><\/i> ${name} 怨쇨굅 媛뺤닔?댁뿭`;
   document.getElementById('modal-total').innerText = total;
-  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 湲곗긽泥?;
   
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
   dates.forEach((date, i) => {
     const val = precips[i] !== null ? Number(precips[i]).toFixed(1) : '0.0';
-    const dateInfo = getDayAndColor(date);
     tbody.innerHTML += `
       <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('hist-${i}')">
-        <td class="px-4 py-3 sm:py-2.5 flex items-center gap-2">
-          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"><\/i> 
-          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"><\/i> ${date}
         <\/td>
         <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-[#003366] md:text-blue-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${val}<\/td>
       <\/tr>
@@ -142,8 +121,8 @@ window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrec
 };
 
 window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock text-sky-500 md:text-sky-400"><\/i> ${name} 향후 24시간 강수예측`;
-  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock text-sky-500 md:text-sky-400"><\/i> ${name} ?ν썑 24?쒓컙 媛뺤닔?덉륫`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 湲곗긽泥?;
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
   
@@ -179,7 +158,7 @@ window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
   }
   
   if (!hasData) {
-    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">?곗씠?곌? ?놁뒿?덈떎.<\/td><\/tr>';
   }
   
   document.getElementById('modal-total').innerText = sum.toFixed(1);
@@ -187,7 +166,7 @@ window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
 };
 
 window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"><\/i> ${name} 향후 10일 강수예측`;
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"><\/i> ${name} ?ν썑 10??媛뺤닔?덉륫`;
   document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> Open-Meteo`;
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
@@ -195,7 +174,7 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
   let sum = 0;
   
   if (!dates || dates.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">?곗씠?곌? ?놁뒿?덈떎.<\/td><\/tr>';
     document.getElementById('modal-total').innerText = '0.0';
     document.getElementById('detail-modal').showModal();
     return;
@@ -205,12 +184,10 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
     const val = precips[i] !== null ? Number(precips[i]) : 0;
     sum += val;
     const valStr = val.toFixed(1);
-    const dateInfo = getDayAndColor(date);
     tbody.innerHTML += `
       <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
-        <td class="px-4 py-3 sm:py-2.5 flex items-center gap-2">
-          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"><\/i> 
-          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>
+        <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"><\/i> ${date}
         <\/td>
         <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
       <\/tr>
@@ -226,25 +203,25 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
   document.getElementById('detail-modal').showModal();
 };
 
-// 4. Flatpickr 초기화 및 로직
+// 4. Flatpickr 珥덇린??諛?濡쒖쭅
 let isUserCustomDate = false;
 
 function initApp() {
-  initSkeleton(); // 최초 로딩 시 스켈레톤 배치
+  initSkeleton(); // 理쒖큹 濡쒕뵫 ???ㅼ펷?덊넠 諛곗튂
   
   const today = new Date();
   const resetBtn = document.getElementById('btn-auto-refresh-reset');
   
-  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-2)
+  // 湲곕낯媛? ?ㅻ뒛 湲곗? 理쒓렐 2??(?뱀씪 湲곗? D-2)
   const defaultStartDate = new Date(today);
   defaultStartDate.setDate(defaultStartDate.getDate() - 2);
   
-  // 최대 15일 이내 제한 설정 (구글 시트 과거 데이터 보존 기준)
+  // 理쒕? 90??3媛쒖썡) ?대궡 ?쒗븳 ?ㅼ젙
   const maxLimitDate = new Date(today);
-  maxLimitDate.setDate(maxLimitDate.getDate() - 15);
+  maxLimitDate.setDate(maxLimitDate.getDate() - 90);
   
   const format = d => {
-     // 로컬 타임존 기준으로 yyyy-mm-dd 추출
+     // 濡쒖뺄 ??꾩〈 湲곗??쇰줈 yyyy-mm-dd 異붿텧
      const offset = d.getTimezoneOffset() * 60000;
      const localISOTime = (new Date(d - offset)).toISOString().split('T')[0];
      return localISOTime;
@@ -255,27 +232,14 @@ function initApp() {
 
   flatpickr('#date-range', {
     mode: 'range',
-    locale: 'ko', // 한국어 로케일 지정 (index.html에 cdn 추가됨)
+    locale: 'ko', // ?쒓뎅??濡쒖???吏??(index.html??cdn 異붽???
     defaultDate: [currentStart, currentEnd],
     minDate: maxLimitDate,
     maxDate: today,
     dateFormat: "Y-m-d",
     onChange: function(selectedDates, dateStr, instance) {
-      if (selectedDates.length === 1) {
-        // 시작일이 선택되면, 최대 15일 범위 내로 선택 가능하도록 잠금 설정
-        const start = selectedDates[0];
-        const maxLimit = new Date(start);
-        maxLimit.setDate(maxLimit.getDate() + 14);
-        const minLimit = new Date(start);
-        minLimit.setDate(minLimit.getDate() - 14);
-
-        instance.set('maxDate', maxLimit < today ? maxLimit : today);
-        instance.set('minDate', minLimit > maxLimitDate ? minLimit : maxLimitDate);
-      } else {
-        // 선택이 완료되거나 취소되면 다시 기본 15일 제한으로 복구
-        instance.set('maxDate', today);
-        instance.set('minDate', maxLimitDate);
-      }
+      // ?댁젣 ?좎쭨 ?좏깮 ??諛붾줈 議고쉶?섏? ?딄퀬, '議고쉶' 踰꾪듉???뚮윭???묐룞?⑸땲??
+      // onChange?먯꽌???꾨Т ?숈옉???섏? ?딆뒿?덈떎.
     }
   });
 
@@ -284,15 +248,6 @@ function initApp() {
     searchBtn.addEventListener('click', async () => {
       const fp = document.querySelector('#date-range')?._flatpickr;
       if (fp && fp.selectedDates.length === 2) {
-        const sDate = fp.selectedDates[0];
-        const eDate = fp.selectedDates[1];
-        const diffDays = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays > 14) {
-          if (window.showToast) window.showToast("조회 기간은 최대 15일 이내로 선택해주세요.", true);
-          return;
-        }
-
         isUserCustomDate = true;
         if (resetBtn) resetBtn.classList.remove('hidden');
         
@@ -302,7 +257,7 @@ function initApp() {
         const d = await fetchWeatherData(s, e);
         if (d) renderCards(d);
       } else {
-        if(window.showToast) window.showToast("조회할 기간(시작일과 종료일)을 모두 선택해주세요.", true);
+        if(window.showToast) window.showToast("議고쉶??湲곌컙(?쒖옉?쇨낵 醫낅즺????紐⑤몢 ?좏깮?댁＜?몄슂.", true);
       }
     });
   }
@@ -319,30 +274,6 @@ function initApp() {
   if (dataSourceCloseBtn && dataSourceModal) {
     dataSourceCloseBtn.addEventListener('click', () => {
       dataSourceModal.close();
-    });
-  }
-
-  const refSitesBtn = document.getElementById('btn-reference-sites');
-  const refSitesModal = document.getElementById('reference-sites-modal');
-  const refSitesCloseBtn = document.getElementById('reference-sites-modal-close-btn');
-
-  if (refSitesBtn && refSitesModal) {
-    refSitesBtn.addEventListener('click', () => {
-      refSitesModal.showModal();
-    });
-  }
-  if (refSitesCloseBtn && refSitesModal) {
-    refSitesCloseBtn.addEventListener('click', () => {
-      refSitesModal.close();
-    });
-  }
-  
-  // 모달 바깥 배경 클릭 시 닫기
-  if (refSitesModal) {
-    refSitesModal.addEventListener('click', (e) => {
-      if (e.target === refSitesModal) {
-        refSitesModal.close();
-      }
     });
   }
 
@@ -367,10 +298,10 @@ function initApp() {
     });
   }
 
-  // 최초 로딩 시 API Call
+  // 理쒖큹 濡쒕뵫 ??API Call
   fetchWeatherData(currentStart, currentEnd).then(renderCards);
 
-  // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
+  // ?먮룞 媛깆떊 (?뚯뒪?몃? ?꾪빐 5珥??⑥쐞濡??ㅼ젙 - 異뷀썑 30遺꾩쑝濡??먮났)
   setInterval(async () => {
     console.log('[Auto-Refresh] Fetching latest weather data...');
     const fp = document.querySelector('#date-range')?._flatpickr;
@@ -393,10 +324,10 @@ function initApp() {
     document.getElementById('loading-indicator').classList.remove('hidden');
     const d = await fetchWeatherData(s, e, true);
     if (d) renderCards(d);
-  }, 30 * 60 * 1000); // 30분(1800000ms)
+  }, 30 * 60 * 1000); // 30遺?1800000ms)
 }
 
-// 비동기 스크립트 로드 시 DOMContentLoaded가 이미 발생했을 수 있으므로 상태 확인 후 실행
+// 鍮꾨룞湲??ㅽ겕由쏀듃 濡쒕뱶 ??DOMContentLoaded媛 ?대? 諛쒖깮?덉쓣 ???덉쑝誘濡??곹깭 ?뺤씤 ???ㅽ뻾
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {
@@ -404,12 +335,11 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================================
-// 서브지역(읍면동) 데이터 Fetch 및 모달 렌더링
-// ==========================================================
+// ?쒕툕吏???띾㈃?? ?곗씠??Fetch 諛?紐⑤떖 ?뚮뜑留?// ==========================================================
 async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
   const regions = window.subRegionsData ? window.subRegionsData[cityId] : null;
   if (!regions || regions.length === 0) {
-    window.showToast(`${cityName}의 세부 지역 데이터가 없습니다.`, true);
+    window.showToast(`${cityName}???몃? 吏???곗씠?곌? ?놁뒿?덈떎.`, true);
     return null;
   }
   
@@ -512,7 +442,7 @@ async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
 window.openSubRegionModal = async function(cityId, cityName) {
   const modal = document.getElementById('sub-region-modal');
   if(!modal) return;
-  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"><\/i> ${cityName} 상세 기상데이터`;
+  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"><\/i> ${cityName} ?곸꽭 湲곗긽?곗씠??;
   
   const loadingEl = document.getElementById('sub-region-loading');
   const gridEl = document.getElementById('sub-region-grid');
@@ -528,7 +458,7 @@ window.openSubRegionModal = async function(cityId, cityName) {
      return (new Date(d - offset)).toISOString().split('T')[0];
   };
   
-  // 기본값 (today - 2) ~ today
+  // 湲곕낯媛?(today - 2) ~ today
   const defaultStartDate = new Date(today);
   defaultStartDate.setDate(defaultStartDate.getDate() - 2);
   let s = format(defaultStartDate);
@@ -543,7 +473,7 @@ window.openSubRegionModal = async function(cityId, cityName) {
   loadingEl.classList.add('hidden');
   
   if (!data) {
-    gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터를 불러올 수 없습니다.<\/div>`;
+    gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">?곗씠?곕? 遺덈윭?????놁뒿?덈떎.<\/div>`;
     return;
   }
   
@@ -553,15 +483,15 @@ window.openSubRegionModal = async function(cityId, cityName) {
         <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}<\/h4>
         <div class="space-y-2">
           <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">선택 기간 강수량<\/span>
+            <span class="text-slate-500">?좏깮 湲곌컙 媛뺤닔??\/span>
             <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
           <\/div>
           <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">향후 24시간 예상<\/span>
+            <span class="text-slate-500">?ν썑 24?쒓컙 ?덉긽<\/span>
             <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
           <\/div>
           <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">향후 10일 예상<\/span>
+            <span class="text-slate-500">?ν썑 10???덉긽<\/span>
             <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
           <\/div>
         <\/div>
@@ -571,14 +501,14 @@ window.openSubRegionModal = async function(cityId, cityName) {
 };
 
 // ==========================================================
-// 5. 지도 모달 제어 함수 (Leaflet.js 연동)
+// 5. 吏??紐⑤떖 ?쒖뼱 ?⑥닔 (Leaflet.js ?곕룞)
 // ==========================================================
 
-/** 지도 모달 닫기 */
+/** 吏??紐⑤떖 ?リ린 */
 window.closeMapModal = function() {
   const modal = document.getElementById('map-modal');
   modal.close();
-  // 닫기 후 인스턴스 정리 (메모리 누수 방지)
+  // ?リ린 ???몄뒪?댁뒪 ?뺣━ (硫붾え由??꾩닔 諛⑹?)
   if (window._leafletMap) {
     try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
     window._leafletMap = null;
@@ -586,52 +516,51 @@ window.closeMapModal = function() {
 };
 
 /**
- * 지도 모달 열기
- * @param {string} name  - 지점명
- * @param {number} lat   - 위도
- * @param {number} lon   - 경도
- * @param {string} condition - 기상 텍스트 (맥음, 비 등)
- * @param {string} temp  - 현재 기온
+ * 吏??紐⑤떖 ?닿린
+ * @param {string} name  - 吏?먮챸
+ * @param {number} lat   - ?꾨룄
+ * @param {number} lon   - 寃쎈룄
+ * @param {string} condition - 湲곗긽 ?띿뒪??(留μ쓬, 鍮???
+ * @param {string} temp  - ?꾩옱 湲곗삩
  */
 window.showMapModal = function(name, lat, lon, condition, temp) {
 
-  // 1. 좌표 유효성 검사
-  if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
-    alert(`[불러오기 실패] ${name} 지점의 위치 좌표가 없어 지도를 표시할 수 없습니다.`);
+  // 1. 醫뚰몴 ?좏슚??寃??  if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
+    alert(`[遺덈윭?ㅺ린 ?ㅽ뙣] ${name} 吏?먯쓽 ?꾩튂 醫뚰몴媛 ?놁뼱 吏?꾨? ?쒖떆?????놁뒿?덈떎.`);
     return;
   }
 
-  // 2. 모달 타이틀 갱신
-  document.getElementById('map-modal-title-text').textContent = `${name} 위치 지도`;
-  document.getElementById('map-modal-info').textContent = `${condition} | ${temp !== '-' ? temp + '°C' : '-'} | ${lat.toFixed(4)}°N  ${lon.toFixed(4)}°E`;
+  // 2. 紐⑤떖 ??댄? 媛깆떊
+  document.getElementById('map-modal-title-text').textContent = `${name} ?꾩튂 吏??;
+  document.getElementById('map-modal-info').textContent = `${condition} | ${temp !== '-' ? temp + '째C' : '-'} | ${lat.toFixed(4)}째N  ${lon.toFixed(4)}째E`;
 
-  // 3. 지도 모달 열기
+  // 3. 吏??紐⑤떖 ?닿린
   document.getElementById('map-modal').showModal();
 
-  // 4. 기존 인스턴스 제거 (중복 초기화 방지) — showModal() 직후, setTimeout 밖에서 선행 처리
+  // 4. 湲곗〈 ?몄뒪?댁뒪 ?쒓굅 (以묐났 珥덇린??諛⑹?) ??showModal() 吏곹썑, setTimeout 諛뽰뿉???좏뻾 泥섎━
   if (window._leafletMap) {
     try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
     window._leafletMap = null;
   }
 
-  // 5. 대기 중 로딩 스피너 표시 (300ms 대기 동안 UX 개선)
+  // 5. ?湲?以?濡쒕뵫 ?ㅽ뵾???쒖떆 (300ms ?湲??숈븞 UX 媛쒖꽑)
   const mapEl = document.getElementById('map-container');
   mapEl.innerHTML = `
     <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#94a3b8;">
       <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"><\/i>
-      <p style="font-size:12px; font-weight:500;">지도를 불러오는 중...<\/p>
+      <p style="font-size:12px; font-weight:500;">吏?꾨? 遺덈윭?ㅻ뒗 以?..<\/p>
     <\/div>
   `;
 
-  // 6. [핵심 수정] Leaflet 초기화 전체를 setTimeout 300ms 안으로 이동
-  //    showModal()은 동기적으로 open 속성만 추가할 뿐,
-  //    브라우저의 레이아웃(리플로우/페인팅) 완료를 보장하지 않음.
-  //    즉시 초기화 시 map-container의 크기가 0이라 Leaflet 에러 발생.
-  //    300ms 대기로 렌더링 완료 후 초기화하여 근본 해결.
+  // 6. [?듭떖 ?섏젙] Leaflet 珥덇린???꾩껜瑜?setTimeout 300ms ?덉쑝濡??대룞
+  //    showModal()? ?숆린?곸쑝濡?open ?띿꽦留?異붽???肉?
+  //    釉뚮씪?곗????덉씠?꾩썐(由ы뵆濡쒖슦/?섏씤?? ?꾨즺瑜?蹂댁옣?섏? ?딆쓬.
+  //    利됱떆 珥덇린????map-container???ш린媛 0?대씪 Leaflet ?먮윭 諛쒖깮.
+  //    300ms ?湲곕줈 ?뚮뜑留??꾨즺 ??珥덇린?뷀븯??洹쇰낯 ?닿껐.
   setTimeout(() => {
 
     try {
-      mapEl.innerHTML = ''; // 로딩 스피너 제거
+      mapEl.innerHTML = ''; // 濡쒕뵫 ?ㅽ뵾???쒓굅
 
       window._leafletMap = L.map('map-container', {
         center: [lat, lon],
@@ -640,45 +569,43 @@ window.showMapModal = function(name, lat, lon, condition, temp) {
         scrollWheelZoom: true
       });
 
-      // OpenStreetMap 타일 레이어
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // OpenStreetMap ????덉씠??      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap<\/a>'
       }).addTo(window._leafletMap);
 
-      // 마커 추가
+      // 留덉빱 異붽?
       const marker = L.marker([lat, lon]).addTo(window._leafletMap);
 
-      // 팝업 내용 (지점명 · 기상 · 기온 · 좌표)
+      // ?앹뾽 ?댁슜 (吏?먮챸 쨌 湲곗긽 쨌 湲곗삩 쨌 醫뚰몴)
       const popupContent = `
         <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
-          <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}<\/div>
+          <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">?뱧 ${name}<\/div>
           <div style="font-size: 12px; color: #555; line-height: 1.7;">
-            기상: <b>${condition}<\/b><br>
-            기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}<\/b><br>
-            <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E<\/span>
+            湲곗긽: <b>${condition}<\/b><br>
+            湲곗삩: <b>${temp !== '-' ? temp + '째C' : '?뺣낫 ?놁쓬'}<\/b><br>
+            <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}째N, ${lon.toFixed(4)}째E<\/span>
           <\/div>
         <\/div>
       `;
       marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
 
-      // 컨테이너 크기 재계산 (dialog 레이아웃 최종 안정화)
+      // 而⑦뀒?대꼫 ?ш린 ?ш퀎??(dialog ?덉씠?꾩썐 理쒖쥌 ?덉젙??
       window._leafletMap.invalidateSize();
 
     } catch (err) {
-      // Leaflet 초기화 실패 시 사용자 친화적 에러 표시
-      console.error('[showMapModal] Leaflet 초기화 실패:', err);
+      // Leaflet 珥덇린???ㅽ뙣 ???ъ슜??移쒗솕???먮윭 ?쒖떆
+      console.error('[showMapModal] Leaflet 珥덇린???ㅽ뙣:', err);
       mapEl.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
           <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"><\/i>
-          <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.<\/p>
-          <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.<\/p>
+          <p style="font-size:13px; font-weight:600;">吏?꾨? 遺덈윭?ㅻ뒗???ㅽ뙣?덉뒿?덈떎.<\/p>
+          <p style="font-size:11px; color:#94a3b8;">?ㅽ듃?뚰겕 ?곹깭瑜??뺤씤 ???ㅼ떆 ?쒕룄??二쇱꽭??<\/p>
         <\/div>
       `;
     }
 
-  }, 300); // 300ms: <dialog> 렌더링 및 CSS 애니메이션 완료 대기
-}
+  }, 300); // 300ms: <dialog> ?뚮뜑留?諛?CSS ?좊땲硫붿씠???꾨즺 ?湲?}
 
 window.toggleModalFullscreen = function() {
   const modalBox = document.querySelector('#detail-modal > div');
