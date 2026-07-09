@@ -30,7 +30,7 @@ window.toggleHourlyData = function(dateIndex) {
   }
 };
 
-function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
+function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme, hourlyAlerts) {
   const barColor = colorTheme === 'future' ? 'bg-amber-400' : 'bg-blue-400';
   const textColor = colorTheme === 'future' ? 'text-amber-400' : 'text-blue-400';
   
@@ -53,7 +53,8 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
       }
       
       const val = hourlyPrecips[i] || 0;
-      hoursData.push({ time: hourlyTimes[i], val });
+      const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
+      hoursData.push({ time: hourlyTimes[i], val, alertType });
       if(val > maxPrecip) { maxPrecip = val; maxIdx = hoursData.length - 1; }
     }
   }
@@ -77,8 +78,13 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme) {
     const hourStr = d.time.substring(11, 16); 
     const valStr = d.val > 0 ? d.val.toFixed(1) : '0';
     
+    let badgeHtml = '';
+    if (d.alertType === 'red') badgeHtml = `<div class="text-[9px] bg-red-500 text-white px-1 rounded mb-0.5 whitespace-nowrap shadow-sm animate-pulse">경보</div>`;
+    else if (d.alertType === 'orange') badgeHtml = `<div class="text-[9px] bg-orange-500 text-white px-1 rounded mb-0.5 whitespace-nowrap shadow-sm">주의</div>`;
+
     chartHtml += `
       <div class="flex flex-col items-center justify-end min-w-[36px] snap-center">
+        ${badgeHtml}
         <span class="text-[10px] mb-1 ${valColor}">${valStr}<\/span>
         <div class="w-4 rounded-t-sm ${hColor}" style="height: ${hPx}px; transition: height 0.3s ease;"><\/div>
         <span class="text-[9px] mt-1 ${tColor}">${hourStr}<\/span>
@@ -141,8 +147,8 @@ window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrec
   document.getElementById('detail-modal').showModal();
 };
 
-window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
-  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock text-sky-500 md:text-sky-400"><\/i> ${name} 향후 24시간 강수예측`;
+window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips, hourlyAlerts) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-regular fa-clock text-blue-500 md:text-sky-400"><\/i> ${name} 향후 24시간 예측`;
   document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
   const tbody = document.getElementById('modal-tbody');
   tbody.innerHTML = '';
@@ -166,10 +172,15 @@ window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
         const hourStr = t.substring(11, 16);
         const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
         
+        let badgeHtml = '';
+        const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
+        if (alertType === 'red') badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보<\/span>`;
+        else if (alertType === 'orange') badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의<\/span>`;
+        
         tbody.innerHTML += `
           <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
-            <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono">
-              <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}
+            <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono flex items-center">
+              <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}${badgeHtml}
             <\/td>
             <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
           <\/tr>
@@ -186,7 +197,7 @@ window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips) {
   document.getElementById('detail-modal').showModal();
 };
 
-window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips) {
+window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, hourlyAlerts) {
   document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"><\/i> ${name} 향후 10일 강수예측`;
   document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> Open-Meteo`;
   const tbody = document.getElementById('modal-tbody');
@@ -206,17 +217,36 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
     sum += val;
     const valStr = val.toFixed(1);
     const dateInfo = getDayAndColor(date);
+    
+    // 해당 날짜의 시간별 최고 알림 레벨 계산
+    let maxAlert = 'none';
+    if (hourlyTimes && hourlyAlerts) {
+      for (let j = 0; j < hourlyTimes.length; j++) {
+        if (hourlyTimes[j].startsWith(date)) {
+          if (hourlyAlerts[j] === 'red') maxAlert = 'red';
+          else if (hourlyAlerts[j] === 'orange' && maxAlert !== 'red') maxAlert = 'orange';
+        }
+      }
+    }
+    
+    let badgeHtml = '';
+    if (maxAlert === 'red') {
+      badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보</span>`;
+    } else if (maxAlert === 'orange') {
+      badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의</span>`;
+    }
+
     tbody.innerHTML += `
       <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
         <td class="px-4 py-3 sm:py-2.5 flex items-center gap-2">
           <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"><\/i> 
-          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>
+          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>${badgeHtml}
         <\/td>
         <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
       <\/tr>
       <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
         <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
-          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future')}
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future', hourlyAlerts)}
         <\/td>
       <\/tr>
     `;
@@ -235,9 +265,9 @@ function initApp() {
   const today = new Date();
   const resetBtn = document.getElementById('btn-auto-refresh-reset');
   
-  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-2)
+  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-1)
   const defaultStartDate = new Date(today);
-  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 1);
   
   // 최대 15일 이내 제한 설정 (구글 시트 과거 데이터 보존 기준)
   const maxLimitDate = new Date(today);
@@ -300,7 +330,7 @@ function initApp() {
         const s = format(fp.selectedDates[0]);
         const e = format(fp.selectedDates[1]);
         const d = await fetchWeatherData(s, e);
-        if (d) renderCards(d);
+        if (d) renderCards(d, window.getPeriodText(s, e));
       } else {
         if(window.showToast) window.showToast("조회할 기간(시작일과 종료일)을 모두 선택해주세요.", true);
       }
@@ -346,6 +376,14 @@ function initApp() {
     });
   }
 
+  const mapViewBtn = document.getElementById('btn-map-view');
+  if (mapViewBtn) {
+    mapViewBtn.addEventListener('click', () => {
+      // 기본 중심: 경기지역본부 (수원 근방)
+      window.showMapModal('경기도 중심', 37.2636, 127.0286);
+    });
+  }
+
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {
       isUserCustomDate = false;
@@ -363,12 +401,12 @@ function initApp() {
       
       document.getElementById('loading-indicator').classList.remove('hidden');
       const d = await fetchWeatherData(s, e, true);
-      if (d) renderCards(d);
+      if (d) renderCards(d, window.getPeriodText(s, e));
     });
   }
 
   // 최초 로딩 시 API Call
-  fetchWeatherData(currentStart, currentEnd).then(renderCards);
+  fetchWeatherData(currentStart, currentEnd).then(d => { if(d) renderCards(d, window.getPeriodText(currentStart, currentEnd)); });
 
   // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
   setInterval(async () => {
@@ -382,7 +420,7 @@ function initApp() {
     } else {
       const nowToday = new Date();
       const dynamicStartDate = new Date(nowToday);
-      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 1);
       
       s = format(dynamicStartDate);
       e = format(nowToday);
@@ -392,7 +430,18 @@ function initApp() {
     
     document.getElementById('loading-indicator').classList.remove('hidden');
     const d = await fetchWeatherData(s, e, true);
-    if (d) renderCards(d);
+    if (d) renderCards(d, window.getPeriodText(s, e));
+
+    // 지도가 열려있을 경우 지도 안의 데이터도 자동 갱신
+    const mapModal = document.getElementById('map-modal');
+    if (mapModal && mapModal.open) {
+      console.log('[Auto-Refresh] Updating map data...');
+      let currentCenter = [37.2636, 127.0286];
+      if (window._leafletMap) {
+         currentCenter = [window._leafletMap.getCenter().lat, window._leafletMap.getCenter().lng];
+      }
+      window.showMapModal('업데이트 됨', currentCenter[0], currentCenter[1]);
+    }
   }, 30 * 60 * 1000); // 30분(1800000ms)
 }
 
@@ -404,115 +453,12 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================================
-// 서브지역(읍면동) 데이터 Fetch 및 모달 렌더링
+// 서브지역(읍면동) 데이터 캐시에서 가져오기 및 모달 렌더링
 // ==========================================================
-async function fetchSubRegionData(cityId, cityName, startDateStr, endDateStr) {
-  const regions = window.subRegionsData ? window.subRegionsData[cityId] : null;
-  if (!regions || regions.length === 0) {
-    window.showToast(`${cityName}의 세부 지역 데이터가 없습니다.`, true);
-    return null;
-  }
-  
-  const lats = regions.map(l => l.lat).join(',');
-  const lons = regions.map(l => l.lon).join(',');
-  
-  const todayDate = new Date();
-  const offset = todayDate.getTimezoneOffset() * 60000;
-  const todayIso = (new Date(todayDate - offset)).toISOString().split('T')[0];
-  const futureDate = new Date(todayDate);
-  futureDate.setDate(futureDate.getDate() + 11);
-  const futureIso = (new Date(futureDate - offset)).toISOString().split('T')[0];
-  
-  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats + '&longitude=' + lons + '&hourly=precipitation&daily=precipitation_sum&timezone=Asia%2FSeoul&past_days=14&forecast_days=14';
-  
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('API Error ' + res.status);
-    let results = await res.json();
-    if (!Array.isArray(results)) results = [results];
-    
-    return regions.map((loc, index) => {
-      const data = results[index] || {};
-      let historyTotal = 0;
-      
-      const futureDates = [];
-      const futurePrecips = [];
-      
-      const now = new Date();
-      
-      if (data.daily && data.daily.time) {
-        data.daily.time.forEach((t, i) => {
-          const p = data.daily.precipitation_sum[i] || 0;
-          
-          if (t === todayIso) {
-            let todayHistorySum = 0;
-            let todayFutureSum = 0;
-            
-            const hourlyTimes = data.hourly?.time || [];
-            const hourlyPrecips = data.hourly?.precipitation || [];
-            
-            hourlyTimes.forEach((ht, hidx) => {
-              if (ht.startsWith(todayIso)) {
-                const htDate = new Date(ht);
-                const val = hourlyPrecips[hidx] || 0;
-                if (htDate <= now) {
-                  todayHistorySum += val;
-                } else {
-                  todayFutureSum += val;
-                }
-              }
-            });
-            
-            if (t >= startDateStr && t <= endDateStr) {
-              historyTotal += todayHistorySum;
-            }
-            if (t >= todayIso && futureDates.length < 10) {
-              futureDates.push(t);
-              futurePrecips.push(todayFutureSum);
-            }
-          } else {
-            if (t >= startDateStr && t <= endDateStr) {
-              historyTotal += p;
-            }
-            if (t >= todayIso && futureDates.length < 10) {
-              futureDates.push(t);
-              futurePrecips.push(p);
-            }
-          }
-        });
-      }
-      const next10dPrecip = futurePrecips.reduce((sum, val) => sum + (val || 0), 0);
-      
-      const nowMs = Date.now();
-      const next24hMs = nowMs + (24 * 60 * 60 * 1000);
-      let next24hSum = 0;
-      
-      const hourlyTimes = data.hourly?.time || [];
-      const hourlyPrecips = data.hourly?.precipitation || [];
-      hourlyTimes.forEach((t, i) => {
-        const timeMs = new Date(t).getTime();
-        if (timeMs >= nowMs && timeMs <= next24hMs) {
-          next24hSum += (hourlyPrecips[i] || 0);
-        }
-      });
-      
-      return {
-        ...loc,
-        totalPrecip: historyTotal.toFixed(1),
-        next24hPrecip: next24hSum.toFixed(1),
-        next10dPrecip: next10dPrecip.toFixed(1)
-      };
-    });
-  } catch(e) {
-    console.error(e);
-    return null;
-  }
-}
-
-window.openSubRegionModal = async function(cityId, cityName) {
+window.openSubRegionModal = function(cityName) {
   const modal = document.getElementById('sub-region-modal');
   if(!modal) return;
-  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"><\/i> ${cityName} 상세 기상데이터`;
+  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"></i> ${cityName} 상세 기상데이터`;
   
   const loadingEl = document.getElementById('sub-region-loading');
   const gridEl = document.getElementById('sub-region-grid');
@@ -528,10 +474,7 @@ window.openSubRegionModal = async function(cityId, cityName) {
      return (new Date(d - offset)).toISOString().split('T')[0];
   };
   
-  // 기본값 (today - 2) ~ today
-  const defaultStartDate = new Date(today);
-  defaultStartDate.setDate(defaultStartDate.getDate() - 2);
-  let s = format(defaultStartDate);
+  let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
   let e = format(today);
   
   if (fp && fp.selectedDates.length === 2) {
@@ -539,35 +482,51 @@ window.openSubRegionModal = async function(cityId, cityName) {
     e = format(fp.selectedDates[1]);
   }
   
-  const data = await fetchSubRegionData(cityId, cityName, s, e);
-  loadingEl.classList.add('hidden');
-  
-  if (!data) {
-    gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터를 불러올 수 없습니다.<\/div>`;
-    return;
-  }
-  
-  data.forEach(d => {
-    gridEl.innerHTML += `
-      <div class="bg-white md:bg-slate-800 rounded-xl p-4 shadow border border-[#E5E5E5] md:border-slate-700">
-        <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}<\/h4>
-        <div class="space-y-2">
-          <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">선택 기간 강수량<\/span>
-            <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
-          <\/div>
-          <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">향후 24시간 예상<\/span>
-            <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
-          <\/div>
-          <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500">향후 10일 예상<\/span>
-            <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm<\/span><\/span>
-          <\/div>
-        <\/div>
-      <\/div>
-    `;
-  });
+  google.script.run
+    .withSuccessHandler(function(responseStr) {
+      loadingEl.classList.add('hidden');
+      try {
+        const data = JSON.parse(responseStr);
+        if (!data || data.length === 0) {
+          gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">${cityName}은(는) 관측소가 1개 뿐이므로, 읍면동 데이터가 없습니다.</div>`;
+          return;
+        }
+        
+        if (data.length === 1 && data[0].error) {
+          gridEl.innerHTML = `<div class="col-span-full text-center text-red-500 py-10">오류 발생: ${data[0].message}</div>`;
+          return;
+        }
+        
+        data.forEach(d => {
+          gridEl.innerHTML += `
+            <div class="bg-white md:bg-slate-800 rounded-xl p-4 shadow border border-[#E5E5E5] md:border-slate-700">
+              <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">${window.getPeriodText(s, e)} 강수량</span>
+                  <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">향후 24시간 예상</span>
+                  <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">향후 10일 예상</span>
+                  <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터 파싱 중 오류가 발생했습니다.</div>`;
+      }
+    })
+    .withFailureHandler(function(err) {
+      loadingEl.classList.add('hidden');
+      gridEl.innerHTML = `<div class="col-span-full text-center text-red-500 py-10">서버 통신 실패: ${err.message}</div>`;
+    })
+    .getSubRegionDataFromCache(cityName, s, e);
 };
 
 // ==========================================================
@@ -586,15 +545,12 @@ window.closeMapModal = function() {
 };
 
 /**
- * 지도 모달 열기
- * @param {string} name  - 지점명
- * @param {number} lat   - 위도
- * @param {number} lon   - 경도
- * @param {string} condition - 기상 텍스트 (맥음, 비 등)
- * @param {string} temp  - 현재 기온
+ * 지도 모달 열기 (91개 전 지점 강수량 데이터 마커 표시)
+ * @param {string} name  - 중심점(클릭한 지점)명
+ * @param {number} lat   - 중심점 위도
+ * @param {number} lon   - 중심점 경도
  */
-window.showMapModal = function(name, lat, lon, condition, temp) {
-
+window.showMapModal = function(name, lat, lon) {
   // 1. 좌표 유효성 검사
   if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
     alert(`[불러오기 실패] ${name} 지점의 위치 좌표가 없어 지도를 표시할 수 없습니다.`);
@@ -602,82 +558,185 @@ window.showMapModal = function(name, lat, lon, condition, temp) {
   }
 
   // 2. 모달 타이틀 갱신
-  document.getElementById('map-modal-title-text').textContent = `${name} 위치 지도`;
-  document.getElementById('map-modal-info').textContent = `${condition} | ${temp !== '-' ? temp + '°C' : '-'} | ${lat.toFixed(4)}°N  ${lon.toFixed(4)}°E`;
+  document.getElementById('map-modal-title-text').textContent = `경기도 기상청 관측소 현황`;
+  document.getElementById('map-modal-info').textContent = document.getElementById('last-updated').innerText;
 
   // 3. 지도 모달 열기
   document.getElementById('map-modal').showModal();
 
-  // 4. 기존 인스턴스 제거 (중복 초기화 방지) — showModal() 직후, setTimeout 밖에서 선행 처리
+  // 4. 기존 인스턴스 제거 및 시점 기억
+  let currentZoom = 9;
+  let currentCenter = [lat, lon];
   if (window._leafletMap) {
+    currentZoom = window._leafletMap.getZoom();
+    currentCenter = [window._leafletMap.getCenter().lat, window._leafletMap.getCenter().lng];
     try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
     window._leafletMap = null;
   }
 
-  // 5. 대기 중 로딩 스피너 표시 (300ms 대기 동안 UX 개선)
+  // 5. 로딩 스피너 표시
   const mapEl = document.getElementById('map-container');
   mapEl.innerHTML = `
     <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#94a3b8;">
-      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"><\/i>
-      <p style="font-size:12px; font-weight:500;">지도를 불러오는 중...<\/p>
-    <\/div>
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"></i>
+      <p style="font-size:12px; font-weight:500;">전 지점 기상 데이터를 불러오는 중...</p>
+    </div>
   `;
 
-  // 6. [핵심 수정] Leaflet 초기화 전체를 setTimeout 300ms 안으로 이동
-  //    showModal()은 동기적으로 open 속성만 추가할 뿐,
-  //    브라우저의 레이아웃(리플로우/페인팅) 완료를 보장하지 않음.
-  //    즉시 초기화 시 map-container의 크기가 0이라 Leaflet 에러 발생.
-  //    300ms 대기로 렌더링 완료 후 초기화하여 근본 해결.
-  setTimeout(() => {
+  // 날짜 계산 (선택 기간 강수량 필터용)
+  const fp = document.querySelector('#date-range')?._flatpickr;
+  const today = new Date();
+  const format = d => {
+     const offset = d.getTimezoneOffset() * 60000;
+     return (new Date(d - offset)).toISOString().split('T')[0];
+  };
+  
+  let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
+  let e = format(today);
+  
+  if (fp && fp.selectedDates.length === 2) {
+    s = format(fp.selectedDates[0]);
+    e = format(fp.selectedDates[1]);
+  }
 
-    try {
-      mapEl.innerHTML = ''; // 로딩 스피너 제거
+  // 6. 서버로 전 지점 데이터 요청
+  google.script.run
+    .withSuccessHandler(function(responseStr) {
+      try {
+        const data = JSON.parse(responseStr);
+        mapEl.innerHTML = ''; // 로딩 스피너 제거
 
-      window._leafletMap = L.map('map-container', {
-        center: [lat, lon],
-        zoom: 11,
-        zoomControl: true,
-        scrollWheelZoom: true
-      });
+        // 지도 생성
+        window._leafletMap = L.map('map-container', {
+          center: currentCenter,
+          zoom: currentZoom,
+          zoomControl: true,
+          scrollWheelZoom: true
+        });
 
-      // OpenStreetMap 타일 레이어
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap<\/a>'
-      }).addTo(window._leafletMap);
+        // Google 위성 타일 레이어 (Hybrid: 위성 + 지명/도로명)
+        L.tileLayer('http://mt0.google.com/vt/lyrs=y&hl=kr&x={x}&y={y}&z={z}', {
+          maxZoom: 18,
+          attribution: '&copy; Google'
+        }).addTo(window._leafletMap);
 
-      // 마커 추가
-      const marker = L.marker([lat, lon]).addTo(window._leafletMap);
+        // 주요 지점 전용 Pane 생성 (일반 마커보다 항상 위에 오도록 Z-Index 설정)
+        window._leafletMap.createPane('majorMarkerPane');
+        window._leafletMap.getPane('majorMarkerPane').style.zIndex = 610; // 일반 overlayPane은 400
+        
+        window._leafletMap.createPane('majorTooltipPane');
+        window._leafletMap.getPane('majorTooltipPane').style.zIndex = 660; // 일반 tooltipPane은 650
 
-      // 팝업 내용 (지점명 · 기상 · 기온 · 좌표)
-      const popupContent = `
-        <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 130px;">
-          <div style="font-size: 14px; font-weight: 700; color: #1D1D1F; margin-bottom: 4px;">📍 ${name}<\/div>
-          <div style="font-size: 12px; color: #555; line-height: 1.7;">
-            기상: <b>${condition}<\/b><br>
-            기온: <b>${temp !== '-' ? temp + '°C' : '정보 없음'}<\/b><br>
-            <span style="color: #aaa; font-size: 10px;">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E<\/span>
-          <\/div>
-        <\/div>
-      `;
-      marker.bindPopup(popupContent, { maxWidth: 220 }).openPopup();
+        const MAJOR_CITIES = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', '옹진', '백령도', '김포', '평택', '안성'];
+        
+        const majorLayer = L.layerGroup();
+        const subLayer = L.layerGroup();
 
-      // 컨테이너 크기 재계산 (dialog 레이아웃 최종 안정화)
-      window._leafletMap.invalidateSize();
+        // 91개 마커 추가
+        data.forEach(d => {
+          if (!d.lat || !d.lon) return;
+          
+          const isMajor = MAJOR_CITIES.includes(d.name);
+          const circleColor = isMajor ? '#e11d48' : '#3b82f6'; // 주요지점은 눈에 띄는 빨간/자주색
+          
+          const circleMarker = L.circleMarker([d.lat, d.lon], {
+            pane: isMajor ? 'majorMarkerPane' : 'overlayPane',
+            radius: isMajor ? 5 : 4,
+            color: '#ffffff',
+            weight: 1,
+            fillColor: circleColor,
+            fillOpacity: 0.9
+          });
+          
+          const titleColor = isMajor ? '#be123c' : '#334155';
+          const tooltipContent = `
+            <div class="custom-map-tooltip" style="font-family: 'Noto Sans KR', sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; white-space: nowrap;">
+              <div style="font-size: 13px; font-weight: 800; color: ${titleColor}; line-height: 1.4;">
+                [ ${d.name} ] 
+                <span style="color: #2563eb; margin-left: 2px;">${d.totalPrecip}</span><span style="color: #94a3b8; margin: 0 2px;">/</span><span style="color: #0284c7;">${d.next24hPrecip}</span><span style="color: #94a3b8; margin: 0 2px;">/</span><span style="color: #d97706;">${d.next10dPrecip}</span>
+              </div>
+              <div class="tooltip-detail" style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 6px; width: 100%;">
+                <table style="width: 100%; font-size: 11px; text-align: left; border-collapse: collapse;">
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">${window.getPeriodText(s, e)}</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #2563eb; font-weight: 700; text-align: right; padding-left: 8px;">${d.totalPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">24시간 예상</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #0284c7; font-weight: 700; text-align: right; padding-left: 8px;">${d.next24hPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">10일 예상</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #d97706; font-weight: 700; text-align: right; padding-left: 8px;">${d.next10dPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          `;
+          
+          circleMarker.bindTooltip(tooltipContent, { 
+            pane: isMajor ? 'majorTooltipPane' : 'tooltipPane',
+            permanent: true, 
+            interactive: true,
+            direction: 'bottom',
+            offset: [0, 5],
+            opacity: 0.95
+          });
+          
+          if (isMajor) {
+            majorLayer.addLayer(circleMarker);
+          } else {
+            subLayer.addLayer(circleMarker);
+          }
+        });
 
-    } catch (err) {
-      // Leaflet 초기화 실패 시 사용자 친화적 에러 표시
-      console.error('[showMapModal] Leaflet 초기화 실패:', err);
+        // 초기에는 주요 지점만 렌더링
+        majorLayer.addTo(window._leafletMap);
+        
+        // 줌 레벨에 따른 읍면동 마커 동적 토글 (임계치: 10)
+        const ZOOM_THRESHOLD = 10;
+        if (window._leafletMap.getZoom() >= ZOOM_THRESHOLD) {
+          window._leafletMap.addLayer(subLayer);
+        }
+        
+        window._leafletMap.on('zoomend', function() {
+          if (window._leafletMap.getZoom() >= ZOOM_THRESHOLD) {
+            if (!window._leafletMap.hasLayer(subLayer)) {
+              window._leafletMap.addLayer(subLayer);
+            }
+          } else {
+            if (window._leafletMap.hasLayer(subLayer)) {
+              window._leafletMap.removeLayer(subLayer);
+            }
+          }
+        });
+
+        window._leafletMap.invalidateSize();
+
+      } catch (err) {
+        console.error('[showMapModal] 데이터 렌더링 실패:', err);
+        mapEl.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"></i>
+            <p style="font-size:13px; font-weight:600;">지도 렌더링에 실패했습니다.</p>
+          </div>
+        `;
+      }
+    })
+    .withFailureHandler(function(err) {
+      console.error('[showMapModal] 서버 통신 실패:', err);
       mapEl.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
-          <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"><\/i>
-          <p style="font-size:13px; font-weight:600;">지도를 불러오는데 실패했습니다.<\/p>
-          <p style="font-size:11px; color:#94a3b8;">네트워크 상태를 확인 후 다시 시도해 주세요.<\/p>
-        <\/div>
+          <i class="fa-solid fa-wifi" style="font-size:2rem;"></i>
+          <p style="font-size:13px; font-weight:600;">데이터 통신에 실패했습니다.</p>
+          <p style="font-size:11px; color:#94a3b8;">${err.message}</p>
+        </div>
       `;
-    }
-
-  }, 300); // 300ms: <dialog> 렌더링 및 CSS 애니메이션 완료 대기
+    })
+    .getAllMapDataFromCache(s, e);
 }
 
 window.toggleModalFullscreen = function() {

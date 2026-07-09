@@ -130,13 +130,14 @@
         </div>
         
         <div class="flex items-center gap-2 ml-auto sm:ml-0">
-          <button id="btn-data-source"
-            class="bg-indigo-600 hover:bg-indigo-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-indigo-600 whitespace-nowrap">
-            <i class="fa-solid fa-circle-info"></i> <span class="text-xs sm:text-sm">데이터 출처</span>
-          </button>
         </div>
 
         <div class="flex items-center gap-2 w-full sm:w-auto justify-end mt-1 sm:mt-0">
+          <button id="btn-map-view"
+            class="bg-emerald-600 hover:bg-emerald-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-emerald-600 whitespace-nowrap">
+            <i class="fa-solid fa-map-location-dot"></i> <span class="text-xs sm:text-sm">MAP보기</span>
+          </button>
+
           <button id="btn-reference-sites"
             class="bg-teal-600 hover:bg-teal-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-teal-600 whitespace-nowrap">
             <i class="fa-solid fa-link"></i> <span class="text-xs sm:text-sm">관련사이트</span>
@@ -226,7 +227,7 @@
       <!-- 오버레이 푸터 (지도 위에 float) -->
       <div
         class="absolute bottom-0 left-0 right-0 z-[1000] px-4 py-2 flex justify-between items-center bg-black/55 backdrop-blur-sm border-t border-white/10">
-        <div class="text-xs text-white/60 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> OpenStreetMap
+        <div class="text-xs text-white/60 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> Google 위성지도
         </div>
         <div id="map-modal-info" class="text-xs text-white/80 font-mono"></div>
       </div>
@@ -359,8 +360,11 @@
   </dialog>
 
   <!-- 데이터 출처 Footer -->
-  <footer class="text-center pb-6 pt-2 text-slate-500 text-xs flex justify-center items-center gap-2">
-    <i class="fa-solid fa-circle-info"></i> 데이터 출처: 기상청(과거, 단기예측), Open-Meteo(장기예측)
+  <footer class="text-center pb-6 pt-2 flex justify-center items-center gap-2">
+    <button id="btn-data-source"
+      class="bg-[#F5F5F7] hover:bg-[#EAEAEA] md:bg-slate-800 md:hover:bg-slate-700 transition-all text-slate-600 md:text-slate-300 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 text-xs border border-[#E5E5E5] md:border-slate-600">
+      <i class="fa-solid fa-circle-info text-indigo-500"></i> 데이터 출처: 기상청 / Open-Meteo
+    </button>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -377,6 +381,14 @@
       100% {
         transform: translateX(100%);
       }
+    }
+
+    /* 지도 마커 커스텀 툴팁 Hover 로직 */
+    .custom-map-tooltip .tooltip-detail {
+      display: none;
+    }
+    .custom-map-tooltip:hover .tooltip-detail {
+      display: block;
     }
   </style>
   <div id="toast-container" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>

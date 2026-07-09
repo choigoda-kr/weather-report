@@ -1519,3 +1519,228 @@ function updateOpenMeteoCache() {
         Logger.log("저장할 중기예보 데이터가 없습니다.");
     }
 }
+
+// ==========================================================
+// 읍면동(서브지역) 데이터 캐시에서 가져오기
+// ==========================================================
+function getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
+  let ss;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  } catch(e) {
+    return JSON.stringify([{ error: "SHEET_ERROR", message: "스프레드시트 연결 실패: " + e.toString() }]);
+  }
+  
+  function getCacheData(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return [];
+    const values = sheet.getDataRange().getValues();
+    return values.length > 1 ? values.slice(1) : []; // 헤더 제외
+  }
+  
+  const pastData = getCacheData('과거강수량_Cache');
+  const fcstData = getCacheData('예상강수량_Cache');
+  const midData = getCacheData('중기예보_Cache');
+  
+  // 하위 지점 목록 추출
+  let targetStns = [];
+  if (KMA_AWS_STATIONS[cityName]) {
+    const stnObj = KMA_AWS_STATIONS[cityName];
+    let mainStnName = cityName;
+    if (cityName === "옹진") mainStnName = "백령도";
+    
+    for (let stn in stnObj) {
+      if (stn !== mainStnName) {
+        targetStns.push(stn);
+      }
+    }
+  }
+  
+  if (targetStns.length === 0) {
+    return JSON.stringify([]);
+  }
+  
+  // 날짜 필터 준비
+  let filterStart = null;
+  let filterEnd = null;
+  if (startDateStr && endDateStr) {
+    filterStart = new Date(startDateStr);
+    filterStart.setHours(0,0,0,0);
+    filterEnd = new Date(endDateStr);
+    filterEnd.setHours(23,59,59,999);
+  }
+  
+  const pad = function(n) { return n < 10 ? '0'+n : n; };
+  const sDateObj = filterStart ? filterStart.getFullYear() + '-' + pad(filterStart.getMonth() + 1) + '-' + pad(filterStart.getDate()) : null;
+  const eDateObj = filterEnd ? filterEnd.getFullYear() + '-' + pad(filterEnd.getMonth() + 1) + '-' + pad(filterEnd.getDate()) : null;
+  
+  const nowMs = Date.now();
+  const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+  
+  const results = targetStns.map(stn => {
+    let historyTotal = 0;
+    let next24hSum = 0;
+    let next10dSum = 0;
+    
+    // 1. 과거 강수량 계산 (날짜 형식: YYYY-MM-DD 또는 Date 객체)
+    pastData.forEach(row => {
+      if (row[0] === cityName && row[1] === stn) {
+        let dtStr = row[3];
+        if (dtStr instanceof Date) {
+          dtStr = dtStr.getFullYear() + '-' + pad(dtStr.getMonth() + 1) + '-' + pad(dtStr.getDate());
+        } else {
+          dtStr = dtStr.toString().split(' ')[0].split('T')[0];
+        }
+        const pcp = parseFloat(row[4]) || 0;
+        
+        if (sDateObj && eDateObj) {
+          if (dtStr >= sDateObj && dtStr <= eDateObj) {
+            historyTotal += pcp;
+          }
+        }
+      }
+    });
+    
+    // 2. 24시간 예상강수량 계산 (날짜 형식: YYYY-MM-DD HH:00 또는 Date 객체)
+    fcstData.forEach(row => {
+      if (row[0] === cityName && row[1] === stn) {
+        let dtStr = row[2];
+        const timeMs = new Date(dtStr).getTime();
+        if (timeMs >= nowMs && timeMs <= next24hMs) {
+          const pcp = parseFloat(row[3]) || 0;
+          next24hSum += pcp;
+        }
+      }
+    });
+    
+    // 3. 중기예보(10일) 계산
+    midData.forEach(row => {
+      if (row[0] === cityName && row[1] === stn) {
+        let dtStr = row[2];
+        const timeMs = new Date(dtStr).getTime();
+        if (timeMs >= nowMs) { // 당일 + 3~10일
+          const pcp = parseFloat(row[3]) || 0;
+          next10dSum += pcp;
+        }
+      }
+    });
+    
+    return {
+      name: stn,
+      totalPrecip: historyTotal.toFixed(1),
+      next24hPrecip: next24hSum.toFixed(1),
+      next10dPrecip: next10dSum.toFixed(1)
+    };
+  });
+  
+  return JSON.stringify(results);
+}
+
+// ==========================================================
+// 91개 전 지점(지도 표시용) 데이터 캐시에서 취합하기
+// ==========================================================
+function getAllMapDataFromCache(startDateStr, endDateStr) {
+  let ss;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+  } catch(e) {
+    return JSON.stringify([{ error: "SHEET_ERROR", message: "스프레드시트 연결 실패: " + e.toString() }]);
+  }
+  
+  function getCacheData(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return [];
+    const values = sheet.getDataRange().getValues();
+    return values.length > 1 ? values.slice(1) : []; // 헤더 제외
+  }
+  
+  const pastData = getCacheData('과거강수량_Cache');
+  const fcstData = getCacheData('예상강수량_Cache');
+  const midData = getCacheData('중기예보_Cache');
+  
+  let filterStart = null;
+  let filterEnd = null;
+  if (startDateStr && endDateStr) {
+    filterStart = new Date(startDateStr);
+    filterStart.setHours(0,0,0,0);
+    filterEnd = new Date(endDateStr);
+    filterEnd.setHours(23,59,59,999);
+  }
+  
+  const pad = function(n) { return n < 10 ? '0'+n : n; };
+  const sDateObj = filterStart ? filterStart.getFullYear() + '-' + pad(filterStart.getMonth() + 1) + '-' + pad(filterStart.getDate()) : null;
+  const eDateObj = filterEnd ? filterEnd.getFullYear() + '-' + pad(filterEnd.getMonth() + 1) + '-' + pad(filterEnd.getDate()) : null;
+  
+  const nowMs = Date.now();
+  const next24hMs = nowMs + (24 * 60 * 60 * 1000);
+  
+  // 91개 지점 초기화
+  let mapData = {};
+  for (let stn in OPEN_METEO_COORDS) {
+    mapData[stn] = {
+      name: stn,
+      lat: OPEN_METEO_COORDS[stn].lat,
+      lon: OPEN_METEO_COORDS[stn].lon,
+      historyTotal: 0,
+      next24hSum: 0,
+      next10dSum: 0
+    };
+  }
+  
+  // 1. 과거 강수량 계산
+  pastData.forEach(row => {
+    const stn = row[1];
+    if (!mapData[stn]) return;
+    
+    let dtStr = row[3];
+    if (dtStr instanceof Date) {
+      dtStr = dtStr.getFullYear() + '-' + pad(dtStr.getMonth() + 1) + '-' + pad(dtStr.getDate());
+    } else {
+      dtStr = dtStr.toString().split(' ')[0].split('T')[0];
+    }
+    const pcp = parseFloat(row[4]) || 0;
+    
+    if (sDateObj && eDateObj) {
+      if (dtStr >= sDateObj && dtStr <= eDateObj) {
+        mapData[stn].historyTotal += pcp;
+      }
+    }
+  });
+  
+  // 2. 24시간 예상강수량 계산
+  fcstData.forEach(row => {
+    const stn = row[1];
+    if (!mapData[stn]) return;
+    
+    let dtStr = row[2];
+    const timeMs = new Date(dtStr).getTime();
+    if (timeMs >= nowMs && timeMs <= next24hMs) {
+      const pcp = parseFloat(row[3]) || 0;
+      mapData[stn].next24hSum += pcp;
+    }
+  });
+  
+  // 3. 중기예보(10일) 계산
+  midData.forEach(row => {
+    const stn = row[1];
+    if (!mapData[stn]) return;
+    
+    let dtStr = row[2];
+    const timeMs = new Date(dtStr).getTime();
+    if (timeMs >= nowMs) {
+      const pcp = parseFloat(row[3]) || 0;
+      mapData[stn].next10dSum += pcp;
+    }
+  });
+  
+  const results = Object.values(mapData).map(d => ({
+    name: d.name,
+    lat: d.lat,
+    lon: d.lon,
+    totalPrecip: d.historyTotal.toFixed(1),
+    next24hPrecip: d.next24hSum.toFixed(1),
+    next10dPrecip: d.next10dSum.toFixed(1)
+  }));
+  
+  return JSON.stringify(results);
+}
