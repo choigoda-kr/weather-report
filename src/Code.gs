@@ -1890,43 +1890,55 @@ function fetchWeatherAlerts() {
   targetCities.forEach(city => {
     let alertStatus = '없음';
     let currentTmEfStr = tmEfStr;
-    
-    const hasAlert = (text) => {
-      if (!text) return false;
+    const SUB_REGIONS = {
+      '여주': ['여주서부', '여주동남부'],
+      '양평': ['양평서부', '양평동부'],
+      '파주': ['파주서북부', '파주동북부', '파주남부'],
+      '용인': ['용인서북부', '용인남부']
+    };
+
+    const checkAlert = (text, alertTypeStr) => {
+      if (!text) return { matched: false, label: '' };
       
-      // 1. 텍스트에 지점명이 직접 명시된 경우 (예: 과천, 과천시)
-      if (text.includes(city) || text.includes(city + '시') || text.includes(city + '군')) {
-        return true;
+      if (SUB_REGIONS[city]) {
+        const matchedSubRegions = SUB_REGIONS[city].filter(sub => text.includes(sub));
+        if (matchedSubRegions.length > 0) {
+          return { matched: true, label: `${alertTypeStr}(${matchedSubRegions.join(', ')})` };
+        }
+        if (text.match(/(경기도|경기)(?=[,\s]|$)/)) {
+          return { matched: true, label: alertTypeStr };
+        }
+      } else {
+        if (text.includes(city) || text.includes(city + '시') || text.includes(city + '군')) {
+          return { matched: true, label: alertTypeStr };
+        }
+        if (city === '옹진' && text.includes('서해5도')) {
+          return { matched: true, label: alertTypeStr };
+        }
+        
+        const gyeonggiCities = ['과천', '이천', '화성', '수원', '연천', '포천', '고양', '김포', '평택', '안성'];
+        const incheonCities = ['강화', '옹진'];
+        
+        if (gyeonggiCities.includes(city)) {
+          if (text.match(/(경기도|경기)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr };
+        }
+        if (incheonCities.includes(city)) {
+          if (text.match(/(인천광역시|인천)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr };
+        }
       }
-      
-      // 2. 옹진 특수 케이스 (서해5도 포함)
-      if (city === '옹진' && text.includes('서해5도')) {
-        return true;
-      }
-      
-      // 3. 광역 단위(도/시 전체) 발효 케이스 대응
-      const gyeonggiCities = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '김포', '평택', '용인', '안성'];
-      const incheonCities = ['강화', '옹진'];
-      
-      // '경기도' 또는 '경기' 뒤에 괄호'('가 오지 않고 쉼표나 공백, 줄바꿈이 오는 경우 (전체 발효로 간주)
-      if (gyeonggiCities.includes(city)) {
-        if (text.match(/(경기도|경기)(?=[,\s]|$)/)) return true;
-      }
-      
-      // 인천광역시 전체 발효 시
-      if (incheonCities.includes(city)) {
-        if (text.match(/(인천광역시|인천)(?=[,\s]|$)/)) return true;
-      }
-      
-      return false;
+      return { matched: false, label: '' };
     };
     
-    if (hasAlert(heavyRainWarning)) {
-      alertStatus = '호우경보';
-    } else if (hasAlert(heavyRainAdvisory)) {
-      alertStatus = '호우주의보';
-    } else if (hasAlert(heavyRainPrelim)) {
-      alertStatus = '예비특보';
+    const warningRes = checkAlert(heavyRainWarning, '호우경보');
+    const advisoryRes = checkAlert(heavyRainAdvisory, '호우주의보');
+    const prelimRes = checkAlert(heavyRainPrelim, '예비특보');
+    
+    if (warningRes.matched) {
+      alertStatus = warningRes.label;
+    } else if (advisoryRes.matched) {
+      alertStatus = advisoryRes.label;
+    } else if (prelimRes.matched) {
+      alertStatus = prelimRes.label;
       currentTmEfStr = '-'; // 예비특보는 부정확한 공통 발효시각 제외
     }
     newRows.push([nowStr, tmFcStr, currentTmEfStr, city, alertStatus]);

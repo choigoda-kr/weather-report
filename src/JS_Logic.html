@@ -441,31 +441,34 @@ function renderCards(dataArray, periodText = '') {
     let badgeHtml = '';
     let hasAlert = false;
     
-    if (data.alertStatus === '호우경보') {
+    if (data.alertStatus && data.alertStatus.startsWith('호우경보')) {
+      let displayStr = data.alertStatus.replace('호우경보', '경보');
       borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
       badgeHtml = `
         <div class="group/badge absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help animate-pulse">
-          <i class="fa-solid fa-triangle-exclamation"></i> 호우경보
+          ${displayStr}
           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
             발효: ${data.tmEf}
           </div>
         </div>`;
       hasAlert = true;
-    } else if (data.alertStatus === '호우주의보') {
+    } else if (data.alertStatus && data.alertStatus.startsWith('호우주의보')) {
+      let displayStr = data.alertStatus.replace('호우주의보', '주의보');
       borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
       badgeHtml = `
         <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 shadow-[0_0_10px_rgba(249,115,22,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
-          <i class="fa-solid fa-circle-exclamation"></i> 호우주의보
+          ${displayStr}
           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
             발효: ${data.tmEf}
           </div>
         </div>`;
       hasAlert = true;
-    } else if (data.alertStatus === '예비특보') {
+    } else if (data.alertStatus && data.alertStatus.startsWith('예비특보')) {
+      let displayStr = data.alertStatus.replace('예비특보', '예비');
       borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)]';
       badgeHtml = `
         <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-blue-400 to-blue-600 border border-blue-300/50 shadow-[0_0_10px_rgba(59,130,246,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
-          <i class="fa-solid fa-info-circle"></i> 예비특보
+          ${displayStr}
           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
             발효: ${data.tmEf}
           </div>
@@ -669,7 +672,29 @@ function checkEmergencyRain(dataArray) {
       `;
     });
     
-    document.getElementById('emergency-modal').showModal();
+    const modal = document.getElementById('emergency-modal');
+    modal.showModal();
+    
+    // 30초 카운트다운 자동 닫힘 로직 추가
+    let timeLeft = 30;
+    const timerSpan = document.getElementById('emergency-modal-timer');
+    
+    if (window._emergencyTimer) clearInterval(window._emergencyTimer);
+    if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
+    
+    window._emergencyTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
+        } else {
+            clearInterval(window._emergencyTimer);
+            if (modal.open) modal.close();
+        }
+    }, 1000);
+    
+    modal.addEventListener('close', () => {
+        if (window._emergencyTimer) clearInterval(window._emergencyTimer);
+    }, { once: true });
   }
 }
 </script>
