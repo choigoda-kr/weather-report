@@ -11,6 +11,15 @@
       window.location.replace("https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec");
     }
   </script>
+  <script>
+    // 전역 에러 핸들러 추가
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      var loader = document.getElementById('loading-indicator');
+      if (loader) loader.classList.add('hidden');
+      alert("시스템 스크립트 오류가 발생했습니다.\n" + msg);
+      return false;
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <!-- Leaflet.js (지도 연동) -->
@@ -152,9 +161,20 @@
     </div>
   </header>
 
+  <!-- 상단 티커(Ticker) 영역 -->
+  <div id="weather-ticker-container" class="px-4 sm:px-6 pt-2 pb-0 hidden">
+    <div class="bg-[#F5F5F7] md:bg-slate-800/80 border border-[#E5E5E5] md:border-slate-700 rounded-lg shadow-sm overflow-hidden flex items-center h-12">
+      <div class="overflow-hidden relative w-full h-full flex items-center cursor-grab active:cursor-grabbing" id="weather-ticker-drag-area">
+        <div id="weather-ticker-content" class="ticker-content whitespace-nowrap text-sm sm:text-lg font-medium">
+          <!-- 텍스트 주입 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 메인 5x3 Grid 영역 -->
   <main class="p-4 sm:p-6 pt-2 flex-grow">
-    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
       <!-- Cards will be dynamically inserted here -->
     </div>
   </main>
@@ -399,9 +419,15 @@
 
     google.script.run.withSuccessHandler(function (pureJsCode) {
       console.log("JS modules received. Injecting into DOM...");
-      var script = document.createElement('script');
-      script.innerHTML = pureJsCode;
-      document.head.appendChild(script);
+      try {
+        var script = document.createElement('script');
+        script.innerHTML = pureJsCode;
+        document.head.appendChild(script);
+      } catch (err) {
+        var loader = document.getElementById('loading-indicator');
+        if (loader) loader.classList.add('hidden');
+        alert("스크립트 실행 오류: " + err.message);
+      }
     }).withFailureHandler(function (error) {
       console.error("Failed to load JS modules: ", error);
       alert("스크립트 로딩 중 오류가 발생했습니다. 새로고침 해주세요.");

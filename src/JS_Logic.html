@@ -83,9 +83,14 @@ window.getPeriodText = function(sDateStr, eDateStr) {
 
 // 2. Fetch 및 Mapping 로직 구조화
 async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
-  const CACHE_TTL = 60 * 60 * 1000; // 60분 TTL
-  const cacheKey = `weather_data_v4_${startDateStr}_${endDateStr}`;
-  const cached = sessionStorage.getItem(cacheKey);
+  const CACHE_TTL = 5 * 60 * 1000; // 5분 TTL
+  const cacheKey = `weather_data_v6_${startDateStr}_${endDateStr}`;
+  let cached = null;
+  try {
+    cached = sessionStorage.getItem(cacheKey);
+  } catch (e) {
+    console.warn('SessionStorage unavailable, skipping cache', e);
+  }
 
   const urlParamsForCache = new URLSearchParams(window.location.search);
   const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
@@ -216,30 +221,60 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
         const hourlyPrecips = [];
         
         if (data.forecast24h) {
+            // 현재 시간을 정각 기준으로 구함 (예: 10:22 -> 10:00)
+            const now = new Date();
+            const currentHourTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0).getTime();
+            
+            // 24시간의 타임스탬프 배열 생성
+            const targetTimes = [];
+            for (let i = 0; i < 24; i++) {
+                targetTimes.push(new Date(currentHourTime + i * 3600000));
+            }
+            
             if (data.forecast24h.precip_hourly) {
-                data.forecast24h.precip_hourly.forEach(p => {
-                    let pValue = parseFloat(p.value);
-                    if (isNaN(pValue)) pValue = 0;
+                // Open-Meteo 포맷인 경우 (외국 등)
+                targetTimes.forEach(t => {
+                    const dtStr = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,'0') + "-" + String(t.getDate()).padStart(2,'0') + "T" + String(t.getHours()).padStart(2,'0') + ":00";
+                    let pValue = 0;
+                    const match = data.forecast24h.precip_hourly.find(p => {
+                        const pDtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
+                        return pDtStr === dtStr;
+                    });
+                    if (match) {
+                        pValue = parseFloat(match.value);
+                        if (isNaN(pValue)) pValue = 0;
+                    }
                     next24hSum += pValue;
                     targetPrecips.push(pValue);
-                    const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
                     hourlyTimes.push(dtStr);
                     hourlyPrecips.push(pValue);
                 });
             } else {
-                const keys = Object.keys(data.forecast24h).sort();
-                keys.slice(0, 24).forEach(key => {
-                    let pValue = parseFloat(data.forecast24h[key]);
+                // KMA 단기예보(forecast24h) 전용 - Open-Meteo 참조 배제
+                targetTimes.forEach(t => {
+                    const y = t.getFullYear();
+                    const m = String(t.getMonth()+1).padStart(2,'0');
+                    const d = String(t.getDate()).padStart(2,'0');
+                    const h = String(t.getHours()).padStart(2,'0');
+                    
+                    const dtStrIso = `${y}-${m}-${d}T${h}:00`;
+                    const dtStrKmaOld = `${y}${m}${d}${h}00`;
+                    const dtStrKmaNew = `${y}-${m}-${d}T${h}:00:00+09:00`;
+                    
+                    let pValue = 0;
+                    // 기상청 데이터 매칭 (없으면 0 처리)
+                    if (data.forecast24h[dtStrKmaNew] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrKmaNew]);
+                    } else if (data.forecast24h[dtStrKmaOld] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrKmaOld]);
+                    } else if (data.forecast24h[dtStrIso] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrIso]);
+                    }
+                    
                     if (isNaN(pValue)) pValue = 0;
                     next24hSum += pValue;
                     targetPrecips.push(pValue);
-                    let dtStr = key;
-                    if (key.length >= 16) {
-                        dtStr = key.substring(0, 16);
-                    } else if (key.length === 12) {
-                        dtStr = `${key.substring(0,4)}-${key.substring(4,6)}-${key.substring(6,8)}T${key.substring(8,10)}:00`;
-                    }
-                    hourlyTimes.push(dtStr);
+                    hourlyTimes.push(dtStrIso);
                     hourlyPrecips.push(pValue);
                 });
             }
@@ -317,16 +352,22 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
             hourlyPrecips: hourlyPrecips,
             hourlyAlerts: getAlertArray(hourlyPrecips),
             historyHourlyTimes: data.historyHourlyTimes || [],
-            historyHourlyPrecips: data.historyHourlyPrecips || []
+            historyHourlyPrecips: data.historyHourlyPrecips || [],
+            alertStatus: data.alertStatus || '없음',
+            tmEf: data.tmEf || ''
         };
     });
 
     // SessionStorage 캐싱 저장
-    sessionStorage.setItem(cacheKey, JSON.stringify({
-      timestamp: Date.now(),
-      payload: processedData,
-      lastUpdated: serverLastUpdated
-    }));
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        payload: processedData,
+        lastUpdated: serverLastUpdated
+      }));
+    } catch (e) {
+      console.warn('SessionStorage setItem failed', e);
+    }
 
     // [정식 기능] URL 파라미터 ?mode=test_rain 기상 경보 시스템 테스트 모드
     const urlParams = new URLSearchParams(window.location.search);
@@ -386,95 +427,121 @@ function renderCards(dataArray, periodText = '') {
   
   if(!dataArray || dataArray.length === 0) return;
 
+  // 상단 10일 예보 요약 티커 렌더링
+  if (typeof window.renderTicker === 'function') {
+      window.renderTicker(dataArray);
+  }
+
   // 긴급 호우 알림 검사 (50mm 이상)
   checkEmergencyRain(dataArray);
 
   dataArray.forEach(data => {
     let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
-    if (data.alertLevel === 'red') {
+    let badgeHtml = '';
+    let hasAlert = false;
+    
+    if (data.alertStatus === '호우경보') {
       borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
-    } else if (data.alertLevel === 'orange') {
+      badgeHtml = `
+        <div class="group/badge absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help animate-pulse">
+          <i class="fa-solid fa-triangle-exclamation"></i> 호우경보
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
+    } else if (data.alertStatus === '호우주의보') {
       borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+      badgeHtml = `
+        <div class="group/badge absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
+          <i class="fa-solid fa-circle-exclamation"></i> 호우주의보
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
+    } else if (data.alertStatus === '예비특보') {
+      borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)]';
+      badgeHtml = `
+        <div class="group/badge absolute top-0 left-0 bg-blue-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
+          <i class="fa-solid fa-info-circle"></i> 예비특보
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
     }
 
     const card = document.createElement('div');
-    card.className = `weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group ${borderClass} transition-all duration-300`;
+    card.className = `weather-card rounded-2xl p-3 sm:p-3 pb-3 flex flex-col justify-between h-auto min-h-fit bg-white md:bg-transparent relative overflow-visible group ${borderClass} transition-all duration-300`;
     
     // 장식용 배경 이펙트
     const bgBlur = document.createElement('div');
-    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color}`;
+    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color} pointer-events-none`;
     card.appendChild(bgBlur);
 
     // 모서리 리본 뱃지 (경보/주의)
-    if (data.alertLevel === 'red') {
-      const badge = document.createElement('div');
-      badge.className = 'absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 animate-pulse';
-      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 호우경보';
-      card.appendChild(badge);
-    } else if (data.alertLevel === 'orange') {
-      const badge = document.createElement('div');
-      badge.className = 'absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20';
-      badge.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> 호우주의보';
-      card.appendChild(badge);
+    if (hasAlert) {
+      card.insertAdjacentHTML('beforeend', badgeHtml);
     }
 
     const innerContent = document.createElement('div');
     innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
     
     innerContent.innerHTML = `
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center mb-2">
         <!-- 좌측: 지점명 -->
         <div class="flex items-center gap-3">
-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
+          <h2 class="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
             ${data.name}
           </h2>
           ${data.name !== '과천' ? `
-          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
-            <i class="fa-solid fa-list-ul"></i> 읍면동 보기
+          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
+            읍면동 보기
           </button>
           ` : ''}
         </div>
         
         <!-- 우측: 기온 + 날씨 아이콘 세트 -->
         <div class="flex items-center gap-3 sm:gap-4">
-          <span class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-sm sm:text-base font-normal">°C<\/span><\/span>
+          <span class="text-lg sm:text-xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-xs sm:text-sm font-normal">°C<\/span><\/span>
           <div class="flex flex-col items-center shrink-0">
-            <i class="fa-solid ${data.condition.icon} text-3xl sm:text-4xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"><\/i>
-            <span class="text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}<\/span>
+            <i class="fa-solid ${data.condition.icon} text-xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg float-animation"><\/i>
+            <span class="text-[9px] sm:text-[10px] font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-1.5 py-0.5 mt-0.5 rounded-full">${data.condition.text}<\/span>
           <\/div>
         <\/div>
       <\/div>
       
-      <div class="space-y-3 mt-auto">
-         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 강수량 <i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
+      <div class="space-y-1.5 mt-auto">
+         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-2 sm:p-1.5 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 강수량 <i class="fa-solid fa-chevron-right text-[10px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
           <div class="text-right flex items-baseline gap-1">
-             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
-             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+             <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
+             <span class="text-xs sm:text-sm text-slate-400 md:text-slate-500 font-bold">mm<\/span>
           <\/div>
         <\/div>
         
-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
-            <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24시간 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"></i>
+        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
+            <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24시간 예상 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn3:opacity-100"></i>
           </span>
           <div class="text-right flex items-center justify-end gap-1.5">
-             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">경보</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">주의</span>` : '')}
+             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">경보</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">주의</span>` : '')}
              <div class="flex items-baseline gap-1">
-               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
+               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
              </div>
           </div>
         </div>
 
-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
-            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10일 예상 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i>
+        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
+            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10일 예상 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn2:opacity-100"></i>
           </span>
           <div class="text-right flex items-center justify-end gap-1.5">
-             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">경보</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">주의</span>` : '')}
+             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">경보</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">주의</span>` : '')}
              <div class="flex items-baseline gap-1">
-               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
+               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
              </div>
           </div>
@@ -487,6 +554,75 @@ function renderCards(dataArray, periodText = '') {
   });
 }
 
+function findEmergencyPeriods(times, precips, nowMs) {
+    const n = times.length;
+    const allWindows = [];
+    
+    for (let i = 0; i < n; i++) {
+        // 3시간 누적 검사
+        let sum3 = 0;
+        let endIdx3 = Math.min(i + 2, n - 1);
+        for(let j = i; j <= endIdx3; j++) sum3 += precips[j];
+        if (sum3 >= 60) {
+            allWindows.push({ startIdx: i, endIdx: endIdx3, sum: sum3, type: sum3 >= 90 ? '경보' : '주의보' });
+        }
+        
+        // 12시간 누적 검사
+        let sum12 = 0;
+        let endIdx12 = Math.min(i + 11, n - 1);
+        for(let j = i; j <= endIdx12; j++) sum12 += precips[j];
+        if (sum12 >= 110) {
+            allWindows.push({ startIdx: i, endIdx: endIdx12, sum: sum12, type: sum12 >= 180 ? '경보' : '주의보' });
+        }
+    }
+    
+    // 우선순위 정렬 (경보 우선, 그 다음 누적 강수량 높은 순)
+    allWindows.sort((a, b) => {
+        if (a.type !== b.type) return a.type === '경보' ? -1 : 1;
+        return b.sum - a.sum;
+    });
+    
+    // 겹치지 않는 윈도우 선택
+    const selected = [];
+    for (const w of allWindows) {
+        let overlap = false;
+        for (const s of selected) {
+            if (w.startIdx <= s.endIdx && w.endIdx >= s.startIdx) {
+                overlap = true;
+                break;
+            }
+        }
+        if (!overlap) selected.push(w);
+    }
+    
+    // UI 표출을 위한 포맷팅
+    const results = [];
+    for (const s of selected) {
+        const startTimeStr = times[s.startIdx];
+        const endTimeStr = times[s.endIdx];
+        
+        const endMs = new Date(endTimeStr).getTime();
+        if (endMs < nowMs) continue; // 완전히 과거인 기간은 제외
+        
+        const startD = startTimeStr.split('T')[0];
+        const endD = endTimeStr.split('T')[0];
+        const dateDisplay = (startD !== endD) ? `${startD}~${endD.substring(5)}` : startD;
+        
+        const startT = startTimeStr.split('T')[1].substring(0, 5);
+        const endT = endTimeStr.split('T')[1].substring(0, 5);
+        const timeDisplay = `${startT}~${endT}`;
+        
+        results.push({
+            dateDisplay: dateDisplay,
+            timeDisplay: timeDisplay,
+            precip: s.sum,
+            type: s.type,
+            sortTime: new Date(startTimeStr).getTime()
+        });
+    }
+    return results;
+}
+
 function checkEmergencyRain(dataArray) {
   const emergencyLogs = [];
   const affectedLocations = new Set();
@@ -495,29 +631,18 @@ function checkEmergencyRain(dataArray) {
   dataArray.forEach(loc => {
     if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
     
-    // 미리 계산된 hourlyAlerts를 사용하거나 새로 계산
-    const alerts = loc.hourlyAlerts || [];
+    const periods = findEmergencyPeriods(loc.hourlyTimes, loc.hourlyPrecips, now);
     
-    loc.hourlyTimes.forEach((timeStr, i) => {
-      const precip = loc.hourlyPrecips[i];
-      const alertType = alerts[i] || 'none';
-      
-      if (alertType !== 'none') {
-        const [datePart, timePart] = timeStr.split('T');
-        const targetTime = new Date(timeStr).getTime();
-        
-        // 과거 데이터 제외 (현재 시각 이후만)
-        if (targetTime >= now) {
-          affectedLocations.add(loc.name);
-          emergencyLogs.push({
+    periods.forEach(p => {
+        affectedLocations.add(loc.name);
+        emergencyLogs.push({
             name: loc.name,
-            date: datePart,
-            time: timePart,
-            precip: precip,
-            type: alertType
-          });
-        }
-      }
+            date: p.dateDisplay,
+            time: p.timeDisplay,
+            precip: p.precip,
+            type: p.type,
+            sortTime: p.sortTime
+        });
     });
   });
   
@@ -529,16 +654,17 @@ function checkEmergencyRain(dataArray) {
     tbody.innerHTML = '';
     
     // 시간순 정렬
-    emergencyLogs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    emergencyLogs.sort((a, b) => a.sortTime - b.sortTime);
     
     emergencyLogs.forEach(log => {
+      const badgeClass = log.type === '경보' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-orange-100 text-orange-700 border-orange-200';
       tbody.innerHTML += `
         <tr class="hover:bg-slate-50 transition-colors">
-          <td class="px-4 py-3 font-bold text-slate-800">${log.name}<\/td>
-          <td class="px-4 py-3 text-slate-600">${log.date}<\/td>
-          <td class="px-4 py-3 text-slate-600">${log.time}<\/td>
-          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)}<\/td>
-        <\/tr>
+          <td class="px-4 py-3 font-bold text-slate-800">${log.name} <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded border ${badgeClass}">${log.type}</span></td>
+          <td class="px-4 py-3 text-slate-600">${log.date}</td>
+          <td class="px-4 py-3 text-slate-600">${log.time}</td>
+          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)} <span class="text-xs text-slate-400 font-normal">mm</span></td>
+        </tr>
       `;
     });
     

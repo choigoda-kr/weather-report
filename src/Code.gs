@@ -941,6 +941,12 @@ function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateSt
     const fcstCache = parseCacheSheet('예상강수량_Cache', 2);
     const midCache = parseCacheSheet('중기예보_Cache', 4);
     
+    const alertSheet = ss.getSheetByName('특보현황');
+    let alertData = [];
+    if (alertSheet) {
+        alertData = alertSheet.getDataRange().getValues();
+    }
+    
     if (pastCache.data.length === 0 && fcstCache.data.length === 0 && midCache.data.length === 0) {
         return JSON.stringify([{ error: "CACHE_MISS", message: "데이터 집계 중입니다." }]);
     }
@@ -985,6 +991,16 @@ function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateSt
     const mergedResults = lats.map((lat, index) => {
         const city = cities[index];
         const matchName = matchNames[index];
+        
+        let alertStatus = '없음';
+        let tmEf = '';
+        for (let i = 1; i < alertData.length; i++) {
+            if (alertData[i][3] === city) {
+                alertStatus = alertData[i][4] || '없음';
+                tmEf = alertData[i][2] || '';
+                break;
+            }
+        }
         
         const historyDaily = {};
         const historyHourly = {};
@@ -1084,7 +1100,9 @@ function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateSt
             historyHourlyPrecips: hourlyPrecips,
             forecast24h: fcst24hObj,
             forecast10d: midDailyObj,
-            forecast10dHourly: midHourlyObj
+            forecast10dHourly: midHourlyObj,
+            alertStatus: alertStatus,
+            tmEf: tmEf
         };
     });
     
@@ -1142,7 +1160,8 @@ function test_getMergedWeatherData() {
 
 function doGet(e) {
   return HtmlService.createTemplateFromFile('index').evaluate()
-      .setTitle('재난 모니터링 대시보드')
+      .setTitle('경기 기상상황실')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -1204,7 +1223,7 @@ function updateForecastPrecipitationCache() {
     for (let i = 0; i < targetGrids.length; i += chunkSize) {
         const chunk = targetGrids.slice(i, i + chunkSize);
         const requests = chunk.map(target => {
-            const fcstUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${kmaApiKey}&pageNo=1&numOfRows=300&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${target.nx}&ny=${target.ny}`;
+            const fcstUrl = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${kmaApiKey}&pageNo=1&numOfRows=600&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${target.nx}&ny=${target.ny}`;
             return { url: fcstUrl, muteHttpExceptions: true };
         });
         
@@ -1541,6 +1560,7 @@ function getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
   const pastData = getCacheData('과거강수량_Cache');
   const fcstData = getCacheData('예상강수량_Cache');
   const midData = getCacheData('중기예보_Cache');
+  const alertData = getCacheData('특보현황');
   
   // 하위 지점 목록 추출
   let targetStns = [];
@@ -1582,7 +1602,8 @@ function getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
     let next24hSum = 0;
     let next10dSum = 0;
     
-    // 1. 과거 강수량 계산 (날짜 형식: YYYY-MM-DD 또는 Date 객체)
+
+  // 1. 과거 강수량 계산 (날짜 형식: YYYY-MM-DD 또는 Date 객체)
     pastData.forEach(row => {
       if (row[0] === cityName && row[1] === stn) {
         let dtStr = row[3];
@@ -1657,6 +1678,7 @@ function getAllMapDataFromCache(startDateStr, endDateStr) {
   const pastData = getCacheData('과거강수량_Cache');
   const fcstData = getCacheData('예상강수량_Cache');
   const midData = getCacheData('중기예보_Cache');
+  const alertData = getCacheData('특보현황');
   
   let filterStart = null;
   let filterEnd = null;
@@ -1687,6 +1709,15 @@ function getAllMapDataFromCache(startDateStr, endDateStr) {
     };
   }
   
+  // 0. 특보현황 반영
+  alertData.forEach(row => {
+    const stn = row[3];
+    if (mapData[stn]) {
+      mapData[stn].tmEf = row[2] || '';
+      mapData[stn].alertStatus = row[4] || '없음';
+    }
+  });
+
   // 1. 과거 강수량 계산
   pastData.forEach(row => {
     const stn = row[1];
@@ -1743,4 +1774,157 @@ function getAllMapDataFromCache(startDateStr, endDateStr) {
   }));
   
   return JSON.stringify(results);
+}
+
+
+function fetchWeatherAlerts() {
+  const scriptProps = PropertiesService.getScriptProperties();
+  const kmaApiKey = scriptProps.getProperty('KMA_API_KEY');
+  if (!kmaApiKey) return;
+  
+  const url = 'https://apis.data.go.kr/1360000/WthrWrnInfoService/getPwnStatus?serviceKey=' + kmaApiKey + '&pageNo=1&numOfRows=10&dataType=JSON';
+  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const contentText = response.getContentText();
+  
+  let data;
+  try {
+    data = JSON.parse(contentText);
+  } catch(e) {
+    console.error('Failed to parse JSON', contentText);
+    return;
+  }
+  
+  const items = data.response && data.response.body && data.response.body.items && data.response.body.items.item;
+  if (!items || items.length === 0) return;
+  const item = items[0];
+  
+  const t6 = item.t6 || '';
+  const t7 = item.t7 || '';
+  
+  const tmFc = item.tmFc ? String(item.tmFc) : "";
+  const tmEf = item.tmEf ? String(item.tmEf) : "";
+  
+  const formatTime = (t) => {
+    if (t.length >= 12) {
+      return t.substring(0,4) + '-' + t.substring(4,6) + '-' + t.substring(6,8) + ' ' + t.substring(8,10) + ':' + t.substring(10,12);
+    }
+    return t;
+  };
+  
+  const tmFcStr = formatTime(tmFc);
+  const tmEfStr = formatTime(tmEf);
+  
+  const extractAllAlertText = (text, alertName) => {
+    if (!text) return '';
+    let result = '';
+    const lines = text.split('\n');
+    let isCapturing = false;
+    const normalizedAlertName = alertName.replace(/\s+/g, '');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const normalizedLine = line.replace(/\s+/g, '');
+      
+      // 캡처 시작: 라인에 특보 이름이 포함되고 (예: "호우예비특보"), 시작이 (번호) 이거나 'o '일 때
+      if (normalizedLine.includes(normalizedAlertName) && (line.match(/^\(\d+\)/) || line.startsWith('o '))) {
+        isCapturing = true;
+        result += line + ' ';
+        continue;
+      }
+      
+      if (isCapturing) {
+        // 캡처 종료: 다른 특보 섹션이 시작될 때
+        const isNewSection = line.match(/^\(\d+\)/) || 
+                             (line.startsWith('o ') && line.match(/특보|주의보|경보/) && !normalizedLine.includes(normalizedAlertName));
+        if (isNewSection) {
+          isCapturing = false;
+        } else {
+          result += line + ' ';
+        }
+      }
+    }
+    return result;
+  };
+  
+  const heavyRainWarning = extractAllAlertText(t6, '호우경보');
+  const heavyRainAdvisory = extractAllAlertText(t6, '호우주의보');
+  const heavyRainPrelim = extractAllAlertText(t7, '호우 예비특보');
+  
+  const targetCities = Object.keys(KMA_FORECAST_GRIDS);
+  const nowStr = new Date().toLocaleString('ko-KR');
+  const newRows = [];
+  
+  targetCities.forEach(city => {
+    let alertStatus = '없음';
+    let currentTmEfStr = tmEfStr;
+    
+    const hasAlert = (text) => {
+      if (!text) return false;
+      
+      // 1. 텍스트에 지점명이 직접 명시된 경우 (예: 과천, 과천시)
+      if (text.includes(city) || text.includes(city + '시') || text.includes(city + '군')) {
+        return true;
+      }
+      
+      // 2. 옹진 특수 케이스 (서해5도 포함)
+      if (city === '옹진' && text.includes('서해5도')) {
+        return true;
+      }
+      
+      // 3. 광역 단위(도/시 전체) 발효 케이스 대응
+      const gyeonggiCities = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '김포', '평택', '안성'];
+      const incheonCities = ['강화', '옹진'];
+      
+      // '경기도' 또는 '경기' 뒤에 괄호'('가 오지 않고 쉼표나 공백, 줄바꿈이 오는 경우 (전체 발효로 간주)
+      if (gyeonggiCities.includes(city)) {
+        if (text.match(/(경기도|경기)(?=[,\s]|$)/)) return true;
+      }
+      
+      // 인천광역시 전체 발효 시
+      if (incheonCities.includes(city)) {
+        if (text.match(/(인천광역시|인천)(?=[,\s]|$)/)) return true;
+      }
+      
+      return false;
+    };
+    
+    if (hasAlert(heavyRainWarning)) {
+      alertStatus = '호우경보';
+    } else if (hasAlert(heavyRainAdvisory)) {
+      alertStatus = '호우주의보';
+    } else if (hasAlert(heavyRainPrelim)) {
+      alertStatus = '예비특보';
+      currentTmEfStr = '-'; // 예비특보는 부정확한 공통 발효시각 제외
+    }
+    newRows.push([nowStr, tmFcStr, currentTmEfStr, city, alertStatus]);
+  });
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('특보현황');
+  if (!sheet) {
+    sheet = ss.insertSheet('특보현황');
+    sheet.appendRow(['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태']);
+  }
+  
+  // Update Headers just in case
+  sheet.getRange(1, 1, 1, 5).setValues([['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태']]);
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 5).clearContent();
+  }
+  sheet.getRange(2, 1, newRows.length, 5).setValues(newRows);
+  
+  // 기상청 원본 데이터(t6, t7)를 '특보종합' 시트에 기록
+  let rawSheet = ss.getSheetByName('특보종합');
+  if (!rawSheet) {
+    rawSheet = ss.insertSheet('특보종합');
+    rawSheet.appendRow(['업데이트 시간', '기상특보 현황 (t6)', '예비특보 현황 (t7)', '파싱된 예비특보']);
+  }
+  // 항상 2번째 줄에 최신 원본 데이터를 덮어씀
+  rawSheet.getRange(2, 1, 1, 4).setValues([[nowStr, t6, t7, heavyRainPrelim]]);
+  
+  console.log('Weather alerts updated successfully.');
 }

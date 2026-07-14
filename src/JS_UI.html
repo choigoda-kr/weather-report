@@ -1,4 +1,45 @@
 <script>
+const holidays2026 = [
+  "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
+  "2026-03-01", "2026-05-05", "2026-05-24", "2026-06-06",
+  "2026-08-15", "2026-09-24", "2026-09-25", "2026-09-26",
+  "2026-10-03", "2026-10-09", "2026-12-25"
+];
+
+function getDayAndColor(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getDay())) {
+    return {
+      text: dateStr,
+      colorClass: 'text-[#1D1D1F] md:text-slate-300',
+      dayOfWeek: '',
+      dateColorClass: 'text-slate-600 md:text-slate-300'
+    };
+  }
+  
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  let dayOfWeek = days[d.getDay()];
+  let isHoliday = holidays2026.includes(dateStr);
+  
+  let colorClass = 'text-[#1D1D1F] md:text-slate-300';
+  let dateColorClass = 'text-slate-600 md:text-slate-300';
+  
+  if (isHoliday || d.getDay() === 0) {
+      colorClass = 'text-red-500 font-bold';
+      dateColorClass = 'text-red-500 font-bold';
+  } else if (d.getDay() === 6) {
+      colorClass = 'text-blue-500 font-bold';
+      dateColorClass = 'text-blue-500 font-bold md:text-blue-400';
+  }
+  
+  return { 
+    text: `${dateStr} (${dayOfWeek})`, 
+    colorClass,
+    dayOfWeek, 
+    dateColorClass 
+  };
+}
+
 function initSkeleton() {
   const grid = document.getElementById('weather-grid');
   grid.innerHTML = '';
@@ -100,24 +141,6 @@ function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme, ho
   return chartHtml;
 }
 
-const holidays2026 = [
-  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18', '2026-03-01', '2026-03-02',
-  '2026-05-05', '2026-05-24', '2026-05-25', '2026-06-06', '2026-08-15', '2026-09-24',
-  '2026-09-25', '2026-09-26', '2026-09-28', '2026-10-03', '2026-10-09', '2026-12-25'
-];
-
-function getDayAndColor(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return { text: dateStr, colorClass: 'text-[#1D1D1F] md:text-slate-300' };
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  let colorClass = 'text-[#1D1D1F] md:text-slate-300';
-  if (d.getDay() === 0 || holidays2026.includes(dateStr)) {
-    colorClass = 'text-red-500 font-bold';
-  } else if (d.getDay() === 6) {
-    colorClass = 'text-blue-500 font-bold';
-  }
-  return { text: `${dateStr} (${days[d.getDay()]})`, colorClass };
-}
 
 window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, total) {
   document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"><\/i> ${name} 과거 강수내역`;
@@ -154,38 +177,33 @@ window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips, hourlyAlert
   tbody.innerHTML = '';
   
   let sum = 0;
-  const nowMs = Date.now();
-  const next24hMs = nowMs + (24 * 60 * 60 * 1000);
   
   let hasData = false;
   
   if (hourlyTimes && hourlyTimes.length > 0) {
     hourlyTimes.forEach((t, i) => {
-      const timeMs = new Date(t).getTime();
-      if (timeMs >= nowMs && timeMs <= next24hMs) {
-        hasData = true;
-        const val = hourlyPrecips[i] !== null && hourlyPrecips[i] !== undefined ? Number(hourlyPrecips[i]) : 0;
-        sum += val;
-        const valStr = val.toFixed(1);
-        
-        // Extract hour string, e.g. "2023-01-01T15:00" -> "15:00"
-        const hourStr = t.substring(11, 16);
-        const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
-        
-        let badgeHtml = '';
-        const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
-        if (alertType === 'red') badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보<\/span>`;
-        else if (alertType === 'orange') badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의<\/span>`;
-        
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
-            <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono flex items-center">
-              <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}${badgeHtml}
-            <\/td>
-            <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
-          <\/tr>
-        `;
-      }
+      hasData = true;
+      const val = hourlyPrecips[i] !== null && hourlyPrecips[i] !== undefined ? Number(hourlyPrecips[i]) : 0;
+      sum += val;
+      const valStr = val.toFixed(1);
+      
+      // Extract hour string, e.g. "2023-01-01T15:00" -> "15:00"
+      const hourStr = t.substring(11, 16);
+      const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
+      
+      let badgeHtml = '';
+      const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
+      if (alertType === 'red') badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보<\/span>`;
+      else if (alertType === 'orange') badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의<\/span>`;
+      
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono flex items-center">
+            <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}${badgeHtml}
+          <\/td>
+          <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
+        <\/tr>
+      `;
     });
   }
   
@@ -259,7 +277,18 @@ window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPreci
 // 4. Flatpickr 초기화 및 로직
 let isUserCustomDate = false;
 
-function initApp() {
+window.initApp = function() {
+  try {
+    initAppCore();
+  } catch (err) {
+    const indicator = document.getElementById('loading-indicator');
+    if (indicator) indicator.classList.add('hidden');
+    if (window.showToast) window.showToast('앱 초기화 오류: ' + err.message, true);
+    console.error('InitApp Error:', err);
+  }
+};
+
+function initAppCore() {
   initSkeleton(); // 최초 로딩 시 스켈레톤 배치
   
   const today = new Date();
@@ -751,6 +780,170 @@ window.toggleModalFullscreen = function() {
   } else {
     icon.classList.remove('fa-compress');
     icon.classList.add('fa-expand');
+  }
+};
+
+// ==========================================================
+// 상단 티커 렌더링 로직 (무한 스크롤 애니메이션 지원)
+// ==========================================================
+window.renderTicker = function(dataArray) {
+  const tickerContainer = document.getElementById('weather-ticker-container');
+  const tickerContent = document.getElementById('weather-ticker-content');
+  if (!tickerContainer || !tickerContent) return;
+
+  const threshold = 5;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const dailyRainMap = {};
+  dataArray.forEach(d => {
+      if (!d.futureDates || !d.futurePrecips) return;
+      
+      // 1. 해당 지점의 전체 향후 시간 데이터로 각 날짜별 최고 경보 단계를 계산 (세부 차트와 완벽하게 동일한 기준 연동)
+      const dailyAlerts = {}; 
+      if (d.futureHourlyTimes && d.futureHourlyAlerts) {
+          const n = d.futureHourlyTimes.length;
+          for (let i = 0; i < n; i++) {
+              const dateStr = d.futureHourlyTimes[i].split('T')[0];
+              if (!dailyAlerts[dateStr]) dailyAlerts[dateStr] = 'none';
+              
+              const alert = d.futureHourlyAlerts[i];
+              if (alert === 'red') {
+                  dailyAlerts[dateStr] = 'red';
+              } else if (alert === 'orange' && dailyAlerts[dateStr] !== 'red') {
+                  dailyAlerts[dateStr] = 'yellow'; // UI는 yellow로 처리
+              }
+          }
+      }
+
+      d.futureDates.forEach((dateStr, idx) => {
+          const precip = d.futurePrecips[idx] || 0;
+          if (dateStr < todayStr) return;
+          if (!dailyRainMap[dateStr]) dailyRainMap[dateStr] = { locs: [], maxPrecip: 0, alertLevel: 'none' };
+          
+          if (precip >= threshold) {
+              const calculatedAlert = dailyAlerts[dateStr] || 'none';
+              dailyRainMap[dateStr].locs.push({ name: d.name, precip: precip, alertLevel: calculatedAlert });
+              
+              if (precip > dailyRainMap[dateStr].maxPrecip) {
+                  dailyRainMap[dateStr].maxPrecip = precip;
+              }
+              
+              if (calculatedAlert === 'red') {
+                  dailyRainMap[dateStr].alertLevel = 'red';
+              } else if (calculatedAlert === 'yellow' && dailyRainMap[dateStr].alertLevel !== 'red') {
+                  dailyRainMap[dateStr].alertLevel = 'yellow';
+              }
+          }
+      });
+  });
+
+  const dateKeys = Object.keys(dailyRainMap).sort();
+  dateKeys.forEach(dateStr => {
+      dailyRainMap[dateStr].locs.sort((a, b) => {
+          // 정렬 기준: 1순위 알럿 레벨(red > yellow > none), 2순위 강수량
+          const aWeight = a.alertLevel === 'red' ? 2 : (a.alertLevel === 'yellow' ? 1 : 0);
+          const bWeight = b.alertLevel === 'red' ? 2 : (b.alertLevel === 'yellow' ? 1 : 0);
+          if (aWeight !== bWeight) return bWeight - aWeight;
+          return b.precip - a.precip;
+      });
+  });
+
+  let tickerHtmlStr = '';
+  dateKeys.forEach((dateStr, idx) => {
+      let dayData = dailyRainMap[dateStr];
+      if (dayData.maxPrecip >= threshold) {
+          let month = dateStr.substring(5, 7);
+          let day = dateStr.substring(8, 10);
+          
+          let { dayOfWeek, dateColorClass } = getDayAndColor(dateStr);
+          const mdStr = `${parseInt(month)}/${parseInt(day)} ${dayOfWeek}`;
+          
+          let locText = '';
+          const top3 = dayData.locs.slice(0, 3).map(l => {
+              let nameHtml = `<span class="font-bold">${l.name}</span>`;
+              if (l.alertLevel === 'red') nameHtml = `<span class="font-bold text-red-500">${l.name}(경보)</span>`;
+              else if (l.alertLevel === 'yellow') nameHtml = `<span class="font-bold text-yellow-500">${l.name}(주의)</span>`;
+              return `${nameHtml}(${l.precip.toFixed(1)}mm)`;
+          }).join(', ');
+          locText = `${top3} 등 <span class="font-bold text-blue-500 md:text-blue-400">${dayData.locs.length}개 지점</span>`;
+          
+          let icon = '<i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md"></i>';
+          if (dayData.alertLevel === 'red') {
+              icon = '<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md"></i>';
+          } else if (dayData.alertLevel === 'yellow') {
+              icon = '<i class="fa-solid fa-star text-yellow-500 drop-shadow-md"></i>';
+          }
+
+          tickerHtmlStr += `<span class="mx-4 flex items-center"><span class="${dateColorClass}">${icon} [${mdStr}]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
+          
+          if (idx < dateKeys.length - 1) {
+              tickerHtmlStr += `<span class="text-slate-300 md:text-slate-600 mx-1">|</span>`;
+          }
+      }
+  });
+
+  if (tickerHtmlStr === '') {
+      tickerContent.innerHTML = `<div class="ticker-track flex items-center justify-center w-full"><span class="text-slate-400">10일 예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span><i class="fa-solid fa-sun text-yellow-500 mx-2"></i> 향후 10일간 주요 우천 예보가 없습니다.</div>`;
+      tickerContainer.style.display = 'block';
+      if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);
+      const track = document.querySelector('#weather-ticker-content .ticker-track');
+      if(track) track.style.transform = 'none';
+  } else {
+      const separator = `<span class="text-slate-300 md:text-slate-600 mx-8">|</span>`;
+      const startMarker = `<span class="text-slate-400 ml-4 mr-2">10일 예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span>`;
+      tickerContent.innerHTML = `<div class="ticker-track">${startMarker}${tickerHtmlStr}${separator}${startMarker}${tickerHtmlStr}</div>`;
+      tickerContainer.style.display = 'block';
+      
+      if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);
+      setTimeout(() => {
+          const track = document.querySelector('#weather-ticker-content .ticker-track');
+          const dragArea = document.getElementById('weather-ticker-drag-area');
+          if (!track || !dragArea) return;
+          
+          let offset = 0;
+          let isDragging = false;
+          let startX = 0;
+          let startOffset = 0;
+          const speed = 0.7; // 속도 70% 줄임
+          
+          let contentWidth = track.scrollWidth / 2;
+          
+          dragArea.onmousedown = (e) => {
+              isDragging = true;
+              startX = e.pageX;
+              startOffset = offset;
+          };
+          dragArea.onmousemove = (e) => {
+              if (!isDragging) return;
+              e.preventDefault();
+              offset = startOffset + (e.pageX - startX);
+          };
+          const endDrag = () => { isDragging = false; };
+          dragArea.onmouseup = endDrag;
+          dragArea.onmouseleave = endDrag;
+          
+          dragArea.ontouchstart = (e) => {
+              isDragging = true;
+              startX = e.touches[0].pageX;
+              startOffset = offset;
+          };
+          dragArea.ontouchmove = (e) => {
+              if (!isDragging) return;
+              offset = startOffset + (e.touches[0].pageX - startX);
+          };
+          dragArea.ontouchend = endDrag;
+          
+          function animateTicker() {
+              if (!isDragging) offset -= speed;
+              if (contentWidth > 0) {
+                  if (offset <= -contentWidth) offset += contentWidth;
+                  else if (offset > 0) offset -= contentWidth;
+              }
+              track.style.transform = `translateX(${offset}px)`;
+              window._tickerRAF = requestAnimationFrame(animateTicker);
+          }
+          animateTicker();
+      }, 100);
   }
 };
 </script>
