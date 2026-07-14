@@ -656,7 +656,7 @@ window.showMapModal = function(name, lat, lon) {
         window._leafletMap.createPane('majorTooltipPane');
         window._leafletMap.getPane('majorTooltipPane').style.zIndex = 660; // 일반 tooltipPane은 650
 
-        const MAJOR_CITIES = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', '옹진', '백령도', '김포', '평택', '안성'];
+        const MAJOR_CITIES = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', /* '옹진', '백령도', */ '김포', '평택', '용인', '안성'];
         
         const majorLayer = L.layerGroup();
         const subLayer = L.layerGroup();
