@@ -20,7 +20,6 @@
       return false;
     };
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <!-- Leaflet.js (지도 연동) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -173,8 +172,26 @@
   </div>
 
   <!-- 메인 5x3 Grid 영역 -->
-  <main class="p-4 sm:p-6 pt-2 flex-grow">
-    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+  <main class="p-4 sm:p-6 pt-2 flex-grow relative">
+    <!-- 정적 스켈레톤 UI (JS 실행 전 즉각 표출) -->
+    <div id="skeleton-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity duration-500 opacity-100 absolute inset-0 p-4 sm:p-6 pt-2 z-10 w-full">
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden md:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+    </div>
+    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity duration-500 opacity-0 relative z-20">
       <!-- Cards will be dynamically inserted here -->
     </div>
   </main>
@@ -282,9 +299,13 @@
           </tbody>
         </table>
       </div>
-      <div class="p-4 bg-[#F8F8F8] border-t border-[#E5E5E5] flex justify-end">
+      <div class="p-4 bg-[#F8F8F8] border-t border-[#E5E5E5] flex justify-between items-center">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600 font-medium select-none">
+          <input type="checkbox" id="emergency-hide-today" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
+          오늘 하루 보지 않기 <span class="text-[10px] text-slate-400 font-normal ml-1 hidden sm:inline">(상황 변동 시 다시 알림)</span>
+        </label>
         <button onclick="document.getElementById('emergency-modal').close()"
-          class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition-colors">확인 <span id="emergency-modal-timer" class="ml-1 opacity-80">(30s)</span></button>
+          class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition-colors whitespace-nowrap">확인 <span id="emergency-modal-timer" class="ml-1 opacity-80">(10s)</span></button>
       </div>
     </div>
   </dialog>

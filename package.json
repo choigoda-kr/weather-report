@@ -1,0 +1,24 @@
+{
+  "name": "weather-report",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tailwind.config.js",
+  "scripts": {
+    "build": "tailwindcss -i ./input.css -o ./output.css --minify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choigoda-kr/weather-report.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/choigoda-kr/weather-report/issues"
+  },
+  "homepage": "https://github.com/choigoda-kr/weather-report#readme",
+  "dependencies": {
+    "tailwindcss": "^4.3.3"
+  }
+}

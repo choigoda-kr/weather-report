@@ -40,27 +40,6 @@ function getDayAndColor(dateStr) {
   };
 }
 
-function initSkeleton() {
-  const grid = document.getElementById('weather-grid');
-  grid.innerHTML = '';
-  // 15개의 스켈레톤 UI 생성
-  for(let i=0; i<15; i++) {
-    grid.innerHTML += `
-      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none">
-        <div class="flex justify-between">
-          <div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"><\/div>
-          <div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"><\/div>
-        <\/div>
-        <div class="space-y-3 mt-auto">
-           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
-           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
-           <div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"><\/div>
-        <\/div>
-      <\/div>
-    `;
-  }
-}
-
 // 4. 모달 관련 전역 함수
 window.toggleHourlyData = function(dateIndex) {
   const el = document.getElementById(`hourly-row-${dateIndex}`);
@@ -289,8 +268,6 @@ window.initApp = function() {
 };
 
 function initAppCore() {
-  initSkeleton(); // 최초 로딩 시 스켈레톤 배치
-  
   const today = new Date();
   const resetBtn = document.getElementById('btn-auto-refresh-reset');
   
@@ -656,7 +633,7 @@ window.showMapModal = function(name, lat, lon) {
         window._leafletMap.createPane('majorTooltipPane');
         window._leafletMap.getPane('majorTooltipPane').style.zIndex = 660; // 일반 tooltipPane은 650
 
-        const MAJOR_CITIES = ['과천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', /* '옹진', '백령도', */ '김포', '평택', '용인', '안성'];
+        const MAJOR_CITIES = ['인천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', /* '옹진', '백령도', */ '김포', '평택', '용인', '안성'];
         
         const majorLayer = L.layerGroup();
         const subLayer = L.layerGroup();
@@ -793,12 +770,40 @@ window.renderTicker = function(dataArray) {
 
   const threshold = 5;
   const todayStr = new Date().toISOString().split('T')[0];
+  
+  // 1. [향후 24시간] 데이터 수집
+  const next24hLocs = [];
+  dataArray.forEach(d => {
+      const precip = parseFloat(d.next24hPrecip) || 0;
+      if (precip >= threshold) {
+          let alertLevel = 'none';
+          if (d.max24hAlert === 'red') alertLevel = 'red';
+          else if (d.max24hAlert === 'orange') alertLevel = 'yellow'; // UI 노란색 별
+          
+          next24hLocs.push({ name: d.name, precip: precip, alertLevel: alertLevel });
+      }
+  });
+  
+  // [향후 24시간] 정렬
+  next24hLocs.sort((a, b) => {
+      const aWeight = a.alertLevel === 'red' ? 2 : (a.alertLevel === 'yellow' ? 1 : 0);
+      const bWeight = b.alertLevel === 'red' ? 2 : (b.alertLevel === 'yellow' ? 1 : 0);
+      if (aWeight !== bWeight) return bWeight - aWeight;
+      return b.precip - a.precip;
+  });
+
+  // 2. 10일 예보 날짜 집계 (내일 제외 - 아이디어 A)
+  // 내일 날짜 계산
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  // 로컬 시간 기준으로 내일 날짜 문자열 추출
+  const offset = tomorrow.getTimezoneOffset() * 60000;
+  const tomorrowStr = (new Date(tomorrow - offset)).toISOString().split('T')[0];
 
   const dailyRainMap = {};
   dataArray.forEach(d => {
       if (!d.futureDates || !d.futurePrecips) return;
       
-      // 1. 해당 지점의 전체 향후 시간 데이터로 각 날짜별 최고 경보 단계를 계산 (세부 차트와 완벽하게 동일한 기준 연동)
       const dailyAlerts = {}; 
       if (d.futureHourlyTimes && d.futureHourlyAlerts) {
           const n = d.futureHourlyTimes.length;
@@ -810,14 +815,16 @@ window.renderTicker = function(dataArray) {
               if (alert === 'red') {
                   dailyAlerts[dateStr] = 'red';
               } else if (alert === 'orange' && dailyAlerts[dateStr] !== 'red') {
-                  dailyAlerts[dateStr] = 'yellow'; // UI는 yellow로 처리
+                  dailyAlerts[dateStr] = 'yellow';
               }
           }
       }
 
       d.futureDates.forEach((dateStr, idx) => {
           const precip = d.futurePrecips[idx] || 0;
-          if (dateStr < todayStr) return;
+          // 오늘 및 내일 날짜 스킵 (내일은 24시간에 포함되므로 제외)
+          if (dateStr <= tomorrowStr) return;
+          
           if (!dailyRainMap[dateStr]) dailyRainMap[dateStr] = { locs: [], maxPrecip: 0, alertLevel: 'none' };
           
           if (precip >= threshold) {
@@ -840,7 +847,6 @@ window.renderTicker = function(dataArray) {
   const dateKeys = Object.keys(dailyRainMap).sort();
   dateKeys.forEach(dateStr => {
       dailyRainMap[dateStr].locs.sort((a, b) => {
-          // 정렬 기준: 1순위 알럿 레벨(red > yellow > none), 2순위 강수량
           const aWeight = a.alertLevel === 'red' ? 2 : (a.alertLevel === 'yellow' ? 1 : 0);
           const bWeight = b.alertLevel === 'red' ? 2 : (b.alertLevel === 'yellow' ? 1 : 0);
           if (aWeight !== bWeight) return bWeight - aWeight;
@@ -848,15 +854,43 @@ window.renderTicker = function(dataArray) {
       });
   });
 
+  // 3. HTML 문자열 생성
   let tickerHtmlStr = '';
+  
+  // [향후 24시간] 파트 HTML 생성
+  if (next24hLocs.length > 0) {
+      let maxAlert24h = 'none';
+      if (next24hLocs.some(l => l.alertLevel === 'red')) maxAlert24h = 'red';
+      else if (next24hLocs.some(l => l.alertLevel === 'yellow')) maxAlert24h = 'yellow';
+      
+      let icon = '<i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md"></i>';
+      if (maxAlert24h === 'red') icon = '<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md"></i>';
+      else if (maxAlert24h === 'yellow') icon = '<i class="fa-solid fa-star text-yellow-500 drop-shadow-md"></i>';
+
+      const top3 = next24hLocs.slice(0, 3).map(l => {
+          let nameHtml = `<span class="font-bold">${l.name}</span>`;
+          if (l.alertLevel === 'red') nameHtml = `<span class="font-bold text-red-500">${l.name}(경보)</span>`;
+          else if (l.alertLevel === 'yellow') nameHtml = `<span class="font-bold text-yellow-500">${l.name}(주의)</span>`;
+          return `${nameHtml}(${l.precip.toFixed(1)}mm)`;
+      }).join(', ');
+      
+      let locText = `${top3} 등 <span class="font-bold text-blue-500 md:text-blue-400">${next24hLocs.length}개 지점</span>`;
+      tickerHtmlStr += `<span class="mx-4 inline-flex items-center"><span class="font-bold text-sky-400">${icon} [향후 24시간]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
+  }
+
+  // 일별 향후 예측 파트 HTML 생성
   dateKeys.forEach((dateStr, idx) => {
       let dayData = dailyRainMap[dateStr];
       if (dayData.maxPrecip >= threshold) {
+          if (tickerHtmlStr !== '') {
+              tickerHtmlStr += `<span class="text-slate-300 md:text-slate-600 mx-1">|</span>`;
+          }
+          
           let month = dateStr.substring(5, 7);
           let day = dateStr.substring(8, 10);
           
           let { dayOfWeek, dateColorClass } = getDayAndColor(dateStr);
-          const mdStr = `${parseInt(month)}/${parseInt(day)} ${dayOfWeek}`;
+          const mdStr = `${parseInt(month)}/${parseInt(day)}(${dayOfWeek})`;
           
           let locText = '';
           const top3 = dayData.locs.slice(0, 3).map(l => {
@@ -874,24 +908,21 @@ window.renderTicker = function(dataArray) {
               icon = '<i class="fa-solid fa-star text-yellow-500 drop-shadow-md"></i>';
           }
 
-          tickerHtmlStr += `<span class="mx-4 flex items-center"><span class="${dateColorClass}">${icon} [${mdStr}]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
-          
-          if (idx < dateKeys.length - 1) {
-              tickerHtmlStr += `<span class="text-slate-300 md:text-slate-600 mx-1">|</span>`;
-          }
+          tickerHtmlStr += `<span class="mx-4 inline-flex items-center"><span class="${dateColorClass}">${icon} [${mdStr}]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
       }
   });
 
+  const startMarker = `<span class="text-slate-400 ml-4 mr-2">예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span>`;
+
   if (tickerHtmlStr === '') {
-      tickerContent.innerHTML = `<div class="ticker-track flex items-center justify-center w-full"><span class="text-slate-400">10일 예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span><i class="fa-solid fa-sun text-yellow-500 mx-2"></i> 향후 10일간 주요 우천 예보가 없습니다.</div>`;
+      tickerContent.innerHTML = `<div class="ticker-track inline-flex items-center justify-center w-full">${startMarker}<i class="fa-solid fa-sun text-yellow-500 mx-2"></i> 향후 우천 예보가 없습니다.</div>`;
       tickerContainer.style.display = 'block';
       if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);
       const track = document.querySelector('#weather-ticker-content .ticker-track');
       if(track) track.style.transform = 'none';
   } else {
-      const separator = `<span class="text-slate-300 md:text-slate-600 mx-8">|</span>`;
-      const startMarker = `<span class="text-slate-400 ml-4 mr-2">10일 예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span>`;
-      tickerContent.innerHTML = `<div class="ticker-track">${startMarker}${tickerHtmlStr}${separator}${startMarker}${tickerHtmlStr}</div>`;
+      const separator = `<span class="text-slate-300 md:text-slate-600 mx-8">/</span>`;
+      tickerContent.innerHTML = `<div class="ticker-track inline-flex items-center">${startMarker}${separator}${tickerHtmlStr}${separator}${startMarker}${separator}${tickerHtmlStr}</div>`;
       tickerContainer.style.display = 'block';
       
       if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);

@@ -1,4 +1,24 @@
 const OPEN_METEO_COORDS = {
+    "인천": {
+        "lat": 37.4777,
+        "lon": 126.6249
+    },
+    "부평": {
+        "lat": 37.5070,
+        "lon": 126.7206
+    },
+    "연수": {
+        "lat": 37.4101,
+        "lon": 126.6783
+    },
+    "영종도": {
+        "lat": 37.4883,
+        "lon": 126.5165
+    },
+    "서구": {
+        "lat": 37.5454,
+        "lon": 126.6760
+    },
     "과천": {
         "lat": 37.4415,
         "lon": 126.9872
@@ -378,6 +398,28 @@ const OPEN_METEO_COORDS = {
 };
 
 const KMA_FORECAST_GRIDS = {
+    "인천": {
+        "인천": {
+            "nx": 55,
+            "ny": 124
+        },
+        "부평": {
+            "nx": 55,
+            "ny": 125
+        },
+        "연수": {
+            "nx": 55,
+            "ny": 123
+        },
+        "영종도": {
+            "nx": 52,
+            "ny": 124
+        },
+        "서구": {
+            "nx": 54,
+            "ny": 126
+        }
+    },
     "과천": {
         "과천": {
             "nx": 60,
@@ -789,6 +831,13 @@ const KMA_FORECAST_GRIDS = {
 };
 
 const KMA_AWS_STATIONS = {
+    "인천": {
+        "인천": "112",
+        "부평": "649",
+        "연수": "505",
+        "영종도": "543",
+        "서구": "506"
+    },
     "과천": {
         "과천": "590"
     },
@@ -928,6 +977,17 @@ const KMA_AWS_STATIONS = {
  */
 
 function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = "merged_" + Utilities.base64EncodeWebSafe(latStr + cityStr + startDateStr + endDateStr).substring(0, 200);
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+    
+    const result = _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr);
+    try { if (result && result.length > 10) cache.put(cacheKey, result, 600); } catch(e) {}
+    return result;
+}
+
+function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
     const lats = latStr.split(',');
     const lons = lonStr.split(',');
     const cities = cityStr.split(',');
@@ -1169,25 +1229,6 @@ function extractKmaFcst24h(data) {
     return result;
 }
 
-/**
- * [테스트용 함수]
- * GAS 에디터에서 '실행' 버튼으로 테스트해 보시려면 이 함수를 선택해서 실행해 주세요!
- */
-function test_getMergedWeatherData() {
-    // 서울시청 주변 임의의 위경도를 세팅하여 백엔드 로직 테스트
-    const testLat = "37.5665";
-    const testLon = "126.9780";
-    
-    Logger.log("테스트 데이터 통신 시작...");
-    try {
-        const resultJSON = getMergedWeatherData(testLat, testLon);
-        Logger.log("통신 성공! 결과 데이터:");
-        Logger.log(resultJSON);
-    } catch (e) {
-        Logger.log("에러 발생: " + e.message);
-    }
-}
-
 
 function doGet(e) {
   return HtmlService.createTemplateFromFile('index').evaluate()
@@ -1198,14 +1239,6 @@ function doGet(e) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
-/**
- * 프론트엔드 자바스크립트를 템플릿 엔진 파싱 없이 브라우저로 직접 쏘아주기 위한 비동기 통신 함수
- */
-function test_aws_api2() {
-    const res = getMergedWeatherData("37.4292", "126.9877", "과천", "2026-06-11", "2026-06-24");
-    Logger.log(res);
 }
 
 function getJSCode() {
@@ -1431,51 +1464,6 @@ function updatePastPrecipitationCache() {
 }
 
 /**
- * [임시 유틸리티] 97개 지점 중 과거강수량 데이터가 들어오지 않는 누락 지점을 찾는 함수
- */
-function findMissingStations() {
-    let ss;
-    try {
-        ss = SpreadsheetApp.getActiveSpreadsheet();
-    } catch(e) {
-        Logger.log('시트에 연결할 수 없습니다.');
-        return;
-    }
-    
-    let sheet = ss.getSheetByName('과거강수량_Cache');
-    if (!sheet) {
-        Logger.log('과거강수량_Cache 시트가 존재하지 않습니다.');
-        return;
-    }
-
-    const data = sheet.getDataRange().getValues();
-    const existing = new Set();
-    // 관측소명은 2번째 열(인덱스 1)
-    for(let i=1; i<data.length; i++) {
-        existing.add(data[i][1]);
-    }
-
-    const missing = [];
-    for(const city in KMA_AWS_STATIONS) {
-        for(const stn in KMA_AWS_STATIONS[city]) {
-            if(!existing.has(stn)) {
-                missing.push(city + ' ' + stn);
-            }
-        }
-    }
-
-    Logger.log('========== 누락된 지점 목록 ==========');
-    if (missing.length === 0) {
-        Logger.log('누락된 지점이 없습니다. 모두 들어와 있습니다.');
-    } else {
-        missing.forEach(m => Logger.log(m));
-        Logger.log('총 ' + missing.length + '개 지점이 누락되었습니다.');
-        Logger.log('======================================');
-        Logger.log('위의 지점 목록을 안티팀장에게 알려주세요!');
-    }
-}
-
-/**
  * 10일 중기예보(Open-Meteo) 구글 시트 캐싱 배치 함수
  */
 function updateOpenMeteoCache() {
@@ -1574,6 +1562,17 @@ function updateOpenMeteoCache() {
 // 읍면동(서브지역) 데이터 캐시에서 가져오기
 // ==========================================================
 function getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "sub_" + Utilities.base64EncodeWebSafe(cityName + startDateStr + endDateStr).substring(0, 200);
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  
+  const result = _getSubRegionDataFromCache(cityName, startDateStr, endDateStr);
+  try { if (result && result.length > 10) cache.put(cacheKey, result, 600); } catch(e) {}
+  return result;
+}
+
+function _getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
   let ss;
   try {
     ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1692,6 +1691,17 @@ function getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
 // 91개 전 지점(지도 표시용) 데이터 캐시에서 취합하기
 // ==========================================================
 function getAllMapDataFromCache(startDateStr, endDateStr) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "map_" + Utilities.base64EncodeWebSafe(startDateStr + endDateStr).substring(0, 200);
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  
+  const result = _getAllMapDataFromCache(startDateStr, endDateStr);
+  try { if (result && result.length > 10) cache.put(cacheKey, result, 600); } catch(e) {}
+  return result;
+}
+
+function _getAllMapDataFromCache(startDateStr, endDateStr) {
   let ss;
   try {
     ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1845,6 +1855,27 @@ function fetchWeatherAlerts() {
   const tmFcStr = formatTime(tmFc);
   const tmEfStr = formatTime(tmEf);
   
+  // 개별 특보 발표/발효시간 조회를 위한 getPwnCd API 호출
+  let pwnCdItems = [];
+  try {
+    const cdUrl = 'https://apis.data.go.kr/1360000/WthrWrnInfoService/getPwnCd?serviceKey=' + kmaApiKey + '&pageNo=1&numOfRows=1000&dataType=JSON';
+    const cdRes = UrlFetchApp.fetch(cdUrl, { muteHttpExceptions: true });
+    const cdData = JSON.parse(cdRes.getContentText());
+    if (cdData.response && cdData.response.body && cdData.response.body.items && cdData.response.body.items.item) {
+      pwnCdItems = cdData.response.body.items.item;
+    }
+  } catch (e) {
+    console.error('Failed to fetch getPwnCd', e);
+  }
+  
+  const formatTimeNum = (tNum) => {
+    const t = String(tNum);
+    if (t.length >= 12) {
+      return t.substring(0,4) + '-' + t.substring(4,6) + '-' + t.substring(6,8) + ' ' + t.substring(8,10) + ':' + t.substring(10,12);
+    }
+    return t;
+  };
+  
   const extractAllAlertText = (text, alertName) => {
     if (!text) return '';
     let result = '';
@@ -1883,6 +1914,32 @@ function fetchWeatherAlerts() {
   const heavyRainAdvisory = extractAllAlertText(t6, '호우주의보');
   const heavyRainPrelim = extractAllAlertText(t7, '호우 예비특보');
   
+  // 해제예고 파싱 함수
+  const parseCancelNotice = (text) => {
+    const cancelNotices = [];
+    if (!text) return cancelNotices;
+    const lines = text.split('\n');
+    let isCapturing = false;
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      if (line.includes('해제 예고') || line.includes('해제예고')) {
+        isCapturing = true;
+        continue;
+      }
+      if (isCapturing) {
+        if (line.match(/^\(\d+\)/) && !line.includes('해제 예고') && !line.includes('해제예고')) {
+          isCapturing = false;
+        } else if (line.startsWith('o ')) {
+          const match = line.match(/^o\s*(.*?)\s*:\s*(.*)$/);
+          if (match) cancelNotices.push({ timeStr: match[1], regionsStr: match[2] });
+        }
+      }
+    }
+    return cancelNotices;
+  };
+  const cancelNoticeList = parseCancelNotice(t6 + '\n' + t7);
+  
   const targetCities = Object.keys(KMA_FORECAST_GRIDS);
   const nowStr = new Date().toLocaleString('ko-KR');
   const newRows = [];
@@ -1894,71 +1951,156 @@ function fetchWeatherAlerts() {
       '여주': ['여주서부', '여주동남부'],
       '양평': ['양평서부', '양평동부'],
       '파주': ['파주서북부', '파주동북부', '파주남부'],
-      '용인': ['용인서북부', '용인남부']
+      '용인': ['용인서북부', '용인남부'],
+      '인천': ['인천북부']
     };
 
     const checkAlert = (text, alertTypeStr) => {
-      if (!text) return { matched: false, label: '' };
+      if (!text) return { matched: false, label: '', matchedSub: '' };
       
+      // 1. 세부 지역 매칭
       if (SUB_REGIONS[city]) {
         const matchedSubRegions = SUB_REGIONS[city].filter(sub => text.includes(sub));
         if (matchedSubRegions.length > 0) {
-          return { matched: true, label: `${alertTypeStr}(${matchedSubRegions.join(', ')})` };
-        }
-        if (text.match(/(경기도|경기)(?=[,\s]|$)/)) {
-          return { matched: true, label: alertTypeStr };
-        }
-      } else {
-        if (text.includes(city) || text.includes(city + '시') || text.includes(city + '군')) {
-          return { matched: true, label: alertTypeStr };
-        }
-        if (city === '옹진' && text.includes('서해5도')) {
-          return { matched: true, label: alertTypeStr };
-        }
-        
-        const gyeonggiCities = ['과천', '이천', '화성', '수원', '연천', '포천', '고양', '김포', '평택', '안성'];
-        const incheonCities = ['강화', '옹진'];
-        
-        if (gyeonggiCities.includes(city)) {
-          if (text.match(/(경기도|경기)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr };
-        }
-        if (incheonCities.includes(city)) {
-          if (text.match(/(인천광역시|인천)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr };
+          return { matched: true, label: `${alertTypeStr}(${matchedSubRegions.join(', ')})`, matchedSub: matchedSubRegions[0] };
         }
       }
-      return { matched: false, label: '' };
+
+      // 2. 기본 도시명 단독 매칭 (단, 괄호가 붙어있는 다른 지역명에 의한 오매칭 방지)
+      let hasBaseCity = false;
+      if (city === '인천') {
+         if (/(인천광역시|인천)(?=[,\s]|$|\))/.test(text)) {
+            hasBaseCity = true;
+         }
+      } else {
+         const regex = new RegExp(`(${city}시|${city}군|${city})(?=[,\\s]|$|[()])`);
+         if (regex.test(text)) {
+            hasBaseCity = true;
+         }
+      }
+
+      if (hasBaseCity) {
+         return { matched: true, label: alertTypeStr, matchedSub: city };
+      }
+      
+      // 3. 특수 케이스 및 광역 단위('경기도', '인천광역시') 포괄 매칭
+      if (city === '옹진' && text.includes('서해5도')) {
+        return { matched: true, label: alertTypeStr, matchedSub: city };
+      }
+      
+      const gyeonggiCities = ['과천', '이천', '화성', '수원', '연천', '포천', '고양', '김포', '평택', '안성', '여주', '양평', '파주', '용인'];
+      const incheonCities = ['강화', '옹진', '인천'];
+
+      // (XXX 제외) 파싱 함수
+      const checkExcluded = (fullText, regionStr, cityName) => {
+         const match = fullText.match(new RegExp(`(${regionStr})\\s*\\(([^)]*제외[^)]*)\\)`));
+         if (match) {
+             const excludeStr = match[2];
+             const cityRegex = new RegExp(`(${cityName}시|${cityName}군|${cityName})(?=[,\\s]|$|제외|\\))`);
+             if (cityRegex.test(excludeStr)) return true; // 명시적으로 제외됨
+             return false; // 광역 매칭은 되었으나 제외 목록엔 없음 -> 최종 포함
+         }
+         return null; // 제외 패턴이 없음
+      };
+      
+      if (gyeonggiCities.includes(city)) {
+         const excludeCheck = checkExcluded(text, '경기도|경기', city);
+         if (excludeCheck === false) return { matched: true, label: alertTypeStr, matchedSub: city };
+         if (excludeCheck === null && text.match(/(경기도|경기)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr, matchedSub: city };
+      }
+      if (incheonCities.includes(city)) {
+         const excludeCheck = checkExcluded(text, '인천광역시|인천', city);
+         if (excludeCheck === false) return { matched: true, label: alertTypeStr, matchedSub: city };
+         if (excludeCheck === null && text.match(/(인천광역시|인천)(?=[,\s]|$)/)) return { matched: true, label: alertTypeStr, matchedSub: city };
+      }
+      
+      return { matched: false, label: '', matchedSub: '' };
     };
     
     const warningRes = checkAlert(heavyRainWarning, '호우경보');
     const advisoryRes = checkAlert(heavyRainAdvisory, '호우주의보');
     const prelimRes = checkAlert(heavyRainPrelim, '예비특보');
     
+    // 개별 시각 검색 함수
+    const findTimeFromCd = (matchedSub, isWarning) => {
+      if (!pwnCdItems || pwnCdItems.length === 0) return { tmFc: tmFcStr, tmEf: currentTmEfStr };
+      let bestMatch = null;
+      for (const item of pwnCdItems) {
+        // 호우 특보(warnVar=2) 중 주의보(warnStress=0) 또는 경보(warnStress=1) 확인
+        if (item.warnVar == 2 && item.warnStress == (isWarning ? 1 : 0)) {
+          // areaName에서 '시', '군'을 제거하여 비교 (예: '파주시서북부' -> '파주서북부')
+          const cleanAreaName = item.areaName.replace(/시|군/g, '');
+          if (cleanAreaName.includes(matchedSub)) {
+            if (!bestMatch || item.tmSeq > bestMatch.tmSeq) {
+              bestMatch = item;
+            }
+          }
+        }
+      }
+      if (bestMatch) {
+        return {
+          tmFc: formatTimeNum(bestMatch.tmFc),
+          tmEf: formatTimeNum(bestMatch.startTime)
+        };
+      }
+      return { tmFc: tmFcStr, tmEf: currentTmEfStr };
+    };
+
+    let finalTmFcStr = tmFcStr;
+    let cancelTimeStr = '';
+    
+    const getCancelNoticeTime = (matchedSub, cityName) => {
+      for (const notice of cancelNoticeList) {
+        if (matchedSub && notice.regionsStr.includes(matchedSub)) return notice.timeStr;
+        if (notice.regionsStr.includes(cityName) || notice.regionsStr.includes(cityName + '시') || notice.regionsStr.includes(cityName + '군')) return notice.timeStr;
+        if (['과천','이천','화성','수원','연천','포천','고양','김포','평택','안성','여주','양평','파주','용인'].includes(cityName)) {
+          if (notice.regionsStr.match(/(경기도|경기)(?=[,\s]|$)/) && !notice.regionsStr.includes(cityName + ' 제외') && !notice.regionsStr.includes(cityName + '군 제외') && !notice.regionsStr.includes(cityName + '시 제외')) return notice.timeStr;
+        }
+        if (['강화', '옹진'].includes(cityName)) {
+          if (notice.regionsStr.match(/(인천광역시|인천)(?=[,\s]|$)/) && !notice.regionsStr.includes(cityName + ' 제외') && !notice.regionsStr.includes(cityName + '군 제외')) return notice.timeStr;
+        }
+      }
+      return '';
+    };
+
     if (warningRes.matched) {
       alertStatus = warningRes.label;
+      const times = findTimeFromCd(warningRes.matchedSub, true);
+      finalTmFcStr = times.tmFc;
+      currentTmEfStr = times.tmEf;
+      cancelTimeStr = getCancelNoticeTime(warningRes.matchedSub, city);
     } else if (advisoryRes.matched) {
       alertStatus = advisoryRes.label;
+      const times = findTimeFromCd(advisoryRes.matchedSub, false);
+      finalTmFcStr = times.tmFc;
+      currentTmEfStr = times.tmEf;
+      cancelTimeStr = getCancelNoticeTime(advisoryRes.matchedSub, city);
     } else if (prelimRes.matched) {
       alertStatus = prelimRes.label;
       currentTmEfStr = '-'; // 예비특보는 부정확한 공통 발효시각 제외
+      cancelTimeStr = getCancelNoticeTime(prelimRes.matchedSub, city);
+    } else {
+      finalTmFcStr = '-';
+      currentTmEfStr = '-';
     }
-    newRows.push([nowStr, tmFcStr, currentTmEfStr, city, alertStatus]);
+    newRows.push([nowStr, finalTmFcStr, currentTmEfStr, city, alertStatus, cancelTimeStr]);
   });
   
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName('특보현황');
   if (!sheet) {
     sheet = ss.insertSheet('특보현황');
-    sheet.appendRow(['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태']);
+    sheet.appendRow(['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태', '해제예고']);
   }
   
   // Update Headers just in case
-  sheet.getRange(1, 1, 1, 5).setValues([['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태']]);
+  sheet.getRange(1, 1, 1, 6).setValues([['업데이트 시간', '발표시각', '발효시각', '지점명', '특보상태', '해제예고']]);
   
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
-    sheet.getRange(2, 1, lastRow - 1, 5).clearContent();
+    sheet.getRange(2, 1, lastRow - 1, 6).clearContent();
   }
-  sheet.getRange(2, 1, newRows.length, 5).setValues(newRows);
+  sheet.getRange(2, 1, newRows.length, 6).setValues(newRows);
   
   // 기상청 원본 데이터(t6, t7)를 '특보종합' 시트에 기록
   let rawSheet = ss.getSheetByName('특보종합');
@@ -1971,3 +2113,4 @@ function fetchWeatherAlerts() {
   
   console.log('Weather alerts updated successfully.');
 }
+
