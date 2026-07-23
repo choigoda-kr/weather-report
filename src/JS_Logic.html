@@ -455,12 +455,16 @@ function renderCards(dataArray, periodText = '') {
   
   if(!dataArray || dataArray.length === 0) return;
 
-  // 상단 10일 예보 요약 티커 렌더링
+  // 상단 10일 예보 요약 티커 렌더링 (UI 렌더링 블로킹 방지를 위해 비동기 지연 실행)
   if (typeof window.renderTicker === 'function') {
-      window.renderTicker(dataArray);
+      setTimeout(() => {
+          window.renderTicker(dataArray);
+      }, 0);
   }
-  // 긴급 호우 알림 검사 (50mm 이상)
-  checkEmergencyRain(dataArray);
+  // 긴급 호우 알림 검사 (50mm 이상) - 비동기 지연 실행
+  setTimeout(() => {
+      checkEmergencyRain(dataArray);
+  }, 0);
 
   dataArray.forEach(data => {
     let borderClass = 'border-2 border-[#EEEEEE] md:border-slate-700/50 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none hover:-translate-y-1 hover:border-blue-400 md:hover:border-blue-500/70 hover:shadow-lg md:hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]';
@@ -542,7 +546,7 @@ function renderCards(dataArray, periodText = '') {
       
       <div class="space-y-1.5 mt-auto">
          <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-2 sm:p-1.5 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
-          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 강수량 <i class="fa-solid fa-chevron-right text-[10px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 누적 <i class="fa-solid fa-chevron-right text-[10px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
           <div class="text-right flex items-baseline gap-1">
              <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
              <span class="text-xs sm:text-sm text-slate-400 md:text-slate-500 font-bold">mm<\/span>

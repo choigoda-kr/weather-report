@@ -1,0 +1,1462 @@
+﻿commit c901449cc6864ea95aacb9d9bb9864d1298477bc
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Tue Jul 14 17:41:20 2026 +0900
+
+    feat: 湲곗긽?밸낫 ?몃텇?? 1遺?媛깆떊 諛?湲닿툒?앹뾽 ?먮룞?ロ옒 湲곕뒫 異붽? (濡ㅻ갚 湲곗?)
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index 773ce0c..56f9348 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -441,31 +441,34 @@ function renderCards(dataArray, periodText = '') {
+     let badgeHtml = '';
+     let hasAlert = false;
+     
+-    if (data.alertStatus === '?몄슦寃쎈낫') {
++    if (data.alertStatus && data.alertStatus.startsWith('?몄슦寃쎈낫')) {
++      let displayStr = data.alertStatus.replace('?몄슦寃쎈낫', '寃쎈낫');
+       borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+       badgeHtml = `
+         <div class="group/badge absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help animate-pulse">
+-          <i class="fa-solid fa-triangle-exclamation"></i> ?몄슦寃쎈낫
++          ${displayStr}
+           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+             諛쒗슚: ${data.tmEf}
+           </div>
+         </div>`;
+       hasAlert = true;
+-    } else if (data.alertStatus === '?몄슦二쇱쓽蹂?) {
++    } else if (data.alertStatus && data.alertStatus.startsWith('?몄슦二쇱쓽蹂?)) {
++      let displayStr = data.alertStatus.replace('?몄슦二쇱쓽蹂?, '二쇱쓽蹂?);
+       borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+       badgeHtml = `
+         <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 shadow-[0_0_10px_rgba(249,115,22,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
+-          <i class="fa-solid fa-circle-exclamation"></i> ?몄슦二쇱쓽蹂?+          ${displayStr}
+           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+             諛쒗슚: ${data.tmEf}
+           </div>
+         </div>`;
+       hasAlert = true;
+-    } else if (data.alertStatus === '?덈퉬?밸낫') {
++    } else if (data.alertStatus && data.alertStatus.startsWith('?덈퉬?밸낫')) {
++      let displayStr = data.alertStatus.replace('?덈퉬?밸낫', '?덈퉬');
+       borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)]';
+       badgeHtml = `
+         <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-blue-400 to-blue-600 border border-blue-300/50 shadow-[0_0_10px_rgba(59,130,246,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
+-          <i class="fa-solid fa-info-circle"></i> ?덈퉬?밸낫
++          ${displayStr}
+           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+             諛쒗슚: ${data.tmEf}
+           </div>
+@@ -669,7 +672,29 @@ function checkEmergencyRain(dataArray) {
+       `;
+     });
+     
+-    document.getElementById('emergency-modal').showModal();
++    const modal = document.getElementById('emergency-modal');
++    modal.showModal();
++    
++    // 30珥?移댁슫?몃떎???먮룞 ?ロ옒 濡쒖쭅 異붽?
++    let timeLeft = 30;
++    const timerSpan = document.getElementById('emergency-modal-timer');
++    
++    if (window._emergencyTimer) clearInterval(window._emergencyTimer);
++    if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
++    
++    window._emergencyTimer = setInterval(() => {
++        timeLeft--;
++        if (timeLeft > 0) {
++            if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
++        } else {
++            clearInterval(window._emergencyTimer);
++            if (modal.open) modal.close();
++        }
++    }, 1000);
++    
++    modal.addEventListener('close', () => {
++        if (window._emergencyTimer) clearInterval(window._emergencyTimer);
++    }, { once: true });
+   }
+ }
+ </script>
+\ No newline at end of file
+
+commit ef7f6e687b654590c7b5849117d80894823cf002
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Tue Jul 14 15:30:37 2026 +0900
+
+    feat: Add Yongin data arrays and hide Ongjin on dashboard
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index cf9d290..773ce0c 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -12,9 +12,10 @@ const locations = [
+   { id: 'paju', name: '?뚯＜', lat: 37.8859, lon: 126.7661 }, // ?뚯＜(99) ASOS
+   { id: 'goyang', name: '怨좎뼇', lat: 37.6401, lon: 126.8322 }, // 怨좎뼇(540) AWS
+   { id: 'ganghwa', name: '媛뺥솕', lat: 37.7074, lon: 126.4463 }, // 媛뺥솕(201) ASOS
+-  { id: 'ongjin', name: '?뱀쭊', lat: 37.9660, lon: 124.6305 }, // 諛깅졊??102) ASOS
++  /* { id: 'ongjin', name: '?뱀쭊', lat: 37.9660, lon: 124.6305 }, // 諛깅졊??102) ASOS (?쒖쇅 泥섎━) */
+   { id: 'gimpo', name: '源??, lat: 37.6049, lon: 126.7151 }, // 源??441) AWS
+   { id: 'pyeongtaek', name: '?됲깮', lat: 36.9926, lon: 127.1129 }, // ?됲깮(356) AWS
++  { id: 'yongin', name: '?⑹씤', lat: 37.2411, lon: 127.1774 }, // ?⑹씤(549) AWS
+   { id: 'anseong', name: '?덉꽦', lat: 37.0116, lon: 127.2758 }  // ?덉꽦(470) AWS
+ ];
+ 
+
+commit d737ce176a1d0df717ad0b43d78091f81b53c978
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Tue Jul 14 13:57:00 2026 +0900
+
+    UI 媛쒖꽑: ?밸낫 諛곗? 諛?二쇱쓽/寃쎈낫 誘몃땲 諭껋? ?붿옄??怨좉툒??
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index 8423c46..cf9d290 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -453,7 +453,7 @@ function renderCards(dataArray, periodText = '') {
+     } else if (data.alertStatus === '?몄슦二쇱쓽蹂?) {
+       borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
+       badgeHtml = `
+-        <div class="group/badge absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
++        <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 shadow-[0_0_10px_rgba(249,115,22,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
+           <i class="fa-solid fa-circle-exclamation"></i> ?몄슦二쇱쓽蹂?           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+             諛쒗슚: ${data.tmEf}
+@@ -463,7 +463,7 @@ function renderCards(dataArray, periodText = '') {
+     } else if (data.alertStatus === '?덈퉬?밸낫') {
+       borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)]';
+       badgeHtml = `
+-        <div class="group/badge absolute top-0 left-0 bg-blue-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
++        <div class="group/badge absolute top-0 left-0 bg-gradient-to-r from-blue-400 to-blue-600 border border-blue-300/50 shadow-[0_0_10px_rgba(59,130,246,0.6)] text-white text-[13px] font-bold px-3 py-1.5 rounded-br-lg z-20 cursor-help">
+           <i class="fa-solid fa-info-circle"></i> ?덈퉬?밸낫
+           <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
+             諛쒗슚: ${data.tmEf}
+@@ -489,7 +489,7 @@ function renderCards(dataArray, periodText = '') {
+     innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
+     
+     innerContent.innerHTML = `
+-      <div class="flex justify-between items-center mb-2">
++      <div class="flex justify-between items-center mb-2 mt-4">
+         <!-- 醫뚯륫: 吏?먮챸 -->
+         <div class="flex items-center gap-3">
+           <h2 class="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
+@@ -526,7 +526,7 @@ function renderCards(dataArray, periodText = '') {
+             <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn3:opacity-100"></i>
+           </span>
+           <div class="text-right flex items-center justify-end gap-1.5">
+-             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             ${data.max24hAlert === 'red' ? `<span class="bg-gradient-to-r from-red-400 to-red-600 border border-red-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(239,68,68,0.6)]">寃쎈낫</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(249,115,22,0.6)]">二쇱쓽</span>` : '')}
+              <div class="flex items-baseline gap-1">
+                <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
+                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+@@ -539,7 +539,7 @@ function renderCards(dataArray, periodText = '') {
+             <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10???덉긽 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn2:opacity-100"></i>
+           </span>
+           <div class="text-right flex items-center justify-end gap-1.5">
+-             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             ${data.max10dAlert === 'red' ? `<span class="bg-gradient-to-r from-red-400 to-red-600 border border-red-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(239,68,68,0.6)]">寃쎈낫</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(249,115,22,0.6)]">二쇱쓽</span>` : '')}
+              <div class="flex items-baseline gap-1">
+                <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
+                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+
+commit c719280ace0936c2c1c5d8fac84063079e30c8af
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Tue Jul 14 10:41:35 2026 +0900
+
+    chore: 遺덊븘?뷀븳 ?꾩떆 諛??뚯뒪???뚯씪 ?뺣━
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index eb59cb0..8423c46 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -83,9 +83,14 @@ window.getPeriodText = function(sDateStr, eDateStr) {
+ 
+ // 2. Fetch 諛?Mapping 濡쒖쭅 援ъ“?? async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
+-  const CACHE_TTL = 60 * 60 * 1000; // 60遺?TTL
+-  const cacheKey = `weather_data_v4_${startDateStr}_${endDateStr}`;
+-  const cached = sessionStorage.getItem(cacheKey);
++  const CACHE_TTL = 5 * 60 * 1000; // 5遺?TTL
++  const cacheKey = `weather_data_v6_${startDateStr}_${endDateStr}`;
++  let cached = null;
++  try {
++    cached = sessionStorage.getItem(cacheKey);
++  } catch (e) {
++    console.warn('SessionStorage unavailable, skipping cache', e);
++  }
+ 
+   const urlParamsForCache = new URLSearchParams(window.location.search);
+   const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
+@@ -216,30 +221,60 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+         const hourlyPrecips = [];
+         
+         if (data.forecast24h) {
++            // ?꾩옱 ?쒓컙???뺢컖 湲곗??쇰줈 援ы븿 (?? 10:22 -> 10:00)
++            const now = new Date();
++            const currentHourTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0).getTime();
++            
++            // 24?쒓컙????꾩뒪?ы봽 諛곗뿴 ?앹꽦
++            const targetTimes = [];
++            for (let i = 0; i < 24; i++) {
++                targetTimes.push(new Date(currentHourTime + i * 3600000));
++            }
++            
+             if (data.forecast24h.precip_hourly) {
+-                data.forecast24h.precip_hourly.forEach(p => {
+-                    let pValue = parseFloat(p.value);
+-                    if (isNaN(pValue)) pValue = 0;
++                // Open-Meteo ?щ㎎??寃쎌슦 (?멸뎅 ??
++                targetTimes.forEach(t => {
++                    const dtStr = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,'0') + "-" + String(t.getDate()).padStart(2,'0') + "T" + String(t.getHours()).padStart(2,'0') + ":00";
++                    let pValue = 0;
++                    const match = data.forecast24h.precip_hourly.find(p => {
++                        const pDtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
++                        return pDtStr === dtStr;
++                    });
++                    if (match) {
++                        pValue = parseFloat(match.value);
++                        if (isNaN(pValue)) pValue = 0;
++                    }
+                     next24hSum += pValue;
+                     targetPrecips.push(pValue);
+-                    const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
+                     hourlyTimes.push(dtStr);
+                     hourlyPrecips.push(pValue);
+                 });
+             } else {
+-                const keys = Object.keys(data.forecast24h).sort();
+-                keys.slice(0, 24).forEach(key => {
+-                    let pValue = parseFloat(data.forecast24h[key]);
++                // KMA ?④린?덈낫(forecast24h) ?꾩슜 - Open-Meteo 李몄“ 諛곗젣
++                targetTimes.forEach(t => {
++                    const y = t.getFullYear();
++                    const m = String(t.getMonth()+1).padStart(2,'0');
++                    const d = String(t.getDate()).padStart(2,'0');
++                    const h = String(t.getHours()).padStart(2,'0');
++                    
++                    const dtStrIso = `${y}-${m}-${d}T${h}:00`;
++                    const dtStrKmaOld = `${y}${m}${d}${h}00`;
++                    const dtStrKmaNew = `${y}-${m}-${d}T${h}:00:00+09:00`;
++                    
++                    let pValue = 0;
++                    // 湲곗긽泥??곗씠??留ㅼ묶 (?놁쑝硫?0 泥섎━)
++                    if (data.forecast24h[dtStrKmaNew] !== undefined) {
++                        pValue = parseFloat(data.forecast24h[dtStrKmaNew]);
++                    } else if (data.forecast24h[dtStrKmaOld] !== undefined) {
++                        pValue = parseFloat(data.forecast24h[dtStrKmaOld]);
++                    } else if (data.forecast24h[dtStrIso] !== undefined) {
++                        pValue = parseFloat(data.forecast24h[dtStrIso]);
++                    }
++                    
+                     if (isNaN(pValue)) pValue = 0;
+                     next24hSum += pValue;
+                     targetPrecips.push(pValue);
+-                    let dtStr = key;
+-                    if (key.length >= 16) {
+-                        dtStr = key.substring(0, 16);
+-                    } else if (key.length === 12) {
+-                        dtStr = `${key.substring(0,4)}-${key.substring(4,6)}-${key.substring(6,8)}T${key.substring(8,10)}:00`;
+-                    }
+-                    hourlyTimes.push(dtStr);
++                    hourlyTimes.push(dtStrIso);
+                     hourlyPrecips.push(pValue);
+                 });
+             }
+@@ -317,16 +352,22 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+             hourlyPrecips: hourlyPrecips,
+             hourlyAlerts: getAlertArray(hourlyPrecips),
+             historyHourlyTimes: data.historyHourlyTimes || [],
+-            historyHourlyPrecips: data.historyHourlyPrecips || []
++            historyHourlyPrecips: data.historyHourlyPrecips || [],
++            alertStatus: data.alertStatus || '?놁쓬',
++            tmEf: data.tmEf || ''
+         };
+     });
+ 
+     // SessionStorage 罹먯떛 ???-    sessionStorage.setItem(cacheKey, JSON.stringify({
+-      timestamp: Date.now(),
+-      payload: processedData,
+-      lastUpdated: serverLastUpdated
+-    }));
++    try {
++      sessionStorage.setItem(cacheKey, JSON.stringify({
++        timestamp: Date.now(),
++        payload: processedData,
++        lastUpdated: serverLastUpdated
++      }));
++    } catch (e) {
++      console.warn('SessionStorage setItem failed', e);
++    }
+ 
+     // [?뺤떇 湲곕뒫] URL ?뚮씪誘명꽣 ?mode=test_rain 湲곗긽 寃쎈낫 ?쒖뒪???뚯뒪??紐⑤뱶
+     const urlParams = new URLSearchParams(window.location.search);
+@@ -386,95 +427,121 @@ function renderCards(dataArray, periodText = '') {
+   
+   if(!dataArray || dataArray.length === 0) return;
+ 
++  // ?곷떒 10???덈낫 ?붿빟 ?곗빱 ?뚮뜑留?+  if (typeof window.renderTicker === 'function') {
++      window.renderTicker(dataArray);
++  }
++
+   // 湲닿툒 ?몄슦 ?뚮┝ 寃??(50mm ?댁긽)
+   checkEmergencyRain(dataArray);
+ 
+   dataArray.forEach(data => {
+     let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
+-    if (data.alertLevel === 'red') {
++    let badgeHtml = '';
++    let hasAlert = false;
++    
++    if (data.alertStatus === '?몄슦寃쎈낫') {
+       borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+-    } else if (data.alertLevel === 'orange') {
++      badgeHtml = `
++        <div class="group/badge absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help animate-pulse">
++          <i class="fa-solid fa-triangle-exclamation"></i> ?몄슦寃쎈낫
++          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
++            諛쒗슚: ${data.tmEf}
++          </div>
++        </div>`;
++      hasAlert = true;
++    } else if (data.alertStatus === '?몄슦二쇱쓽蹂?) {
+       borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
++      badgeHtml = `
++        <div class="group/badge absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
++          <i class="fa-solid fa-circle-exclamation"></i> ?몄슦二쇱쓽蹂?+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
++            諛쒗슚: ${data.tmEf}
++          </div>
++        </div>`;
++      hasAlert = true;
++    } else if (data.alertStatus === '?덈퉬?밸낫') {
++      borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)]';
++      badgeHtml = `
++        <div class="group/badge absolute top-0 left-0 bg-blue-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 cursor-help">
++          <i class="fa-solid fa-info-circle"></i> ?덈퉬?밸낫
++          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-0 mt-1 w-max bg-black/80 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-50">
++            諛쒗슚: ${data.tmEf}
++          </div>
++        </div>`;
++      hasAlert = true;
+     }
+ 
+     const card = document.createElement('div');
+-    card.className = `weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group ${borderClass} transition-all duration-300`;
++    card.className = `weather-card rounded-2xl p-3 sm:p-3 pb-3 flex flex-col justify-between h-auto min-h-fit bg-white md:bg-transparent relative overflow-visible group ${borderClass} transition-all duration-300`;
+     
+     // ?μ떇??諛곌꼍 ?댄럺??     const bgBlur = document.createElement('div');
+-    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color}`;
++    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color} pointer-events-none`;
+     card.appendChild(bgBlur);
+ 
+     // 紐⑥꽌由?由щ낯 諭껋? (寃쎈낫/二쇱쓽)
+-    if (data.alertLevel === 'red') {
+-      const badge = document.createElement('div');
+-      badge.className = 'absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 animate-pulse';
+-      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ?몄슦寃쎈낫';
+-      card.appendChild(badge);
+-    } else if (data.alertLevel === 'orange') {
+-      const badge = document.createElement('div');
+-      badge.className = 'absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20';
+-      badge.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ?몄슦二쇱쓽蹂?;
+-      card.appendChild(badge);
++    if (hasAlert) {
++      card.insertAdjacentHTML('beforeend', badgeHtml);
+     }
+ 
+     const innerContent = document.createElement('div');
+     innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
+     
+     innerContent.innerHTML = `
+-      <div class="flex justify-between items-center mb-4">
++      <div class="flex justify-between items-center mb-2">
+         <!-- 醫뚯륫: 吏?먮챸 -->
+         <div class="flex items-center gap-3">
+-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
++          <h2 class="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
+             ${data.name}
+           </h2>
+           ${data.name !== '怨쇱쿇' ? `
+-          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
+-            <i class="fa-solid fa-list-ul"></i> ?띾㈃??蹂닿린
++          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
++            ?띾㈃??蹂닿린
+           </button>
+           ` : ''}
+         </div>
+         
+         <!-- ?곗륫: 湲곗삩 + ?좎뵪 ?꾩씠肄??명듃 -->
+         <div class="flex items-center gap-3 sm:gap-4">
+-          <span class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-sm sm:text-base font-normal">째C<\/span><\/span>
++          <span class="text-lg sm:text-xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-xs sm:text-sm font-normal">째C<\/span><\/span>
+           <div class="flex flex-col items-center shrink-0">
+-            <i class="fa-solid ${data.condition.icon} text-3xl sm:text-4xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"><\/i>
+-            <span class="text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}<\/span>
++            <i class="fa-solid ${data.condition.icon} text-xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg float-animation"><\/i>
++            <span class="text-[9px] sm:text-[10px] font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-1.5 py-0.5 mt-0.5 rounded-full">${data.condition.text}<\/span>
+           <\/div>
+         <\/div>
+       <\/div>
+       
+-      <div class="space-y-3 mt-auto">
+-         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 媛뺤닔??<i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
++      <div class="space-y-1.5 mt-auto">
++         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-2 sm:p-1.5 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
++          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 媛뺤닔??<i class="fa-solid fa-chevron-right text-[10px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
+           <div class="text-right flex items-baseline gap-1">
+-             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
+-             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
++             <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
++             <span class="text-xs sm:text-sm text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+           <\/div>
+         <\/div>
+         
+-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
+-            <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"></i>
++        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
++          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
++            <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn3:opacity-100"></i>
+           </span>
+           <div class="text-right flex items-center justify-end gap-1.5">
+-             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
+              <div class="flex items-baseline gap-1">
+-               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
++               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
+                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+              </div>
+           </div>
+         </div>
+ 
+-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
+-            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10???덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i>
++        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
++          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
++            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10???덉긽 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn2:opacity-100"></i>
+           </span>
+           <div class="text-right flex items-center justify-end gap-1.5">
+-             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[9px] px-1 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
+              <div class="flex items-baseline gap-1">
+-               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
++               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
+                <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+              </div>
+           </div>
+@@ -487,6 +554,75 @@ function renderCards(dataArray, periodText = '') {
+   });
+ }
+ 
++function findEmergencyPeriods(times, precips, nowMs) {
++    const n = times.length;
++    const allWindows = [];
++    
++    for (let i = 0; i < n; i++) {
++        // 3?쒓컙 ?꾩쟻 寃??+        let sum3 = 0;
++        let endIdx3 = Math.min(i + 2, n - 1);
++        for(let j = i; j <= endIdx3; j++) sum3 += precips[j];
++        if (sum3 >= 60) {
++            allWindows.push({ startIdx: i, endIdx: endIdx3, sum: sum3, type: sum3 >= 90 ? '寃쎈낫' : '二쇱쓽蹂? });
++        }
++        
++        // 12?쒓컙 ?꾩쟻 寃??+        let sum12 = 0;
++        let endIdx12 = Math.min(i + 11, n - 1);
++        for(let j = i; j <= endIdx12; j++) sum12 += precips[j];
++        if (sum12 >= 110) {
++            allWindows.push({ startIdx: i, endIdx: endIdx12, sum: sum12, type: sum12 >= 180 ? '寃쎈낫' : '二쇱쓽蹂? });
++        }
++    }
++    
++    // ?곗꽑?쒖쐞 ?뺣젹 (寃쎈낫 ?곗꽑, 洹??ㅼ쓬 ?꾩쟻 媛뺤닔???믪? ??
++    allWindows.sort((a, b) => {
++        if (a.type !== b.type) return a.type === '寃쎈낫' ? -1 : 1;
++        return b.sum - a.sum;
++    });
++    
++    // 寃뱀튂吏 ?딅뒗 ?덈룄???좏깮
++    const selected = [];
++    for (const w of allWindows) {
++        let overlap = false;
++        for (const s of selected) {
++            if (w.startIdx <= s.endIdx && w.endIdx >= s.startIdx) {
++                overlap = true;
++                break;
++            }
++        }
++        if (!overlap) selected.push(w);
++    }
++    
++    // UI ?쒖텧???꾪븳 ?щ㎎??+    const results = [];
++    for (const s of selected) {
++        const startTimeStr = times[s.startIdx];
++        const endTimeStr = times[s.endIdx];
++        
++        const endMs = new Date(endTimeStr).getTime();
++        if (endMs < nowMs) continue; // ?꾩쟾??怨쇨굅??湲곌컙? ?쒖쇅
++        
++        const startD = startTimeStr.split('T')[0];
++        const endD = endTimeStr.split('T')[0];
++        const dateDisplay = (startD !== endD) ? `${startD}~${endD.substring(5)}` : startD;
++        
++        const startT = startTimeStr.split('T')[1].substring(0, 5);
++        const endT = endTimeStr.split('T')[1].substring(0, 5);
++        const timeDisplay = `${startT}~${endT}`;
++        
++        results.push({
++            dateDisplay: dateDisplay,
++            timeDisplay: timeDisplay,
++            precip: s.sum,
++            type: s.type,
++            sortTime: new Date(startTimeStr).getTime()
++        });
++    }
++    return results;
++}
++
+ function checkEmergencyRain(dataArray) {
+   const emergencyLogs = [];
+   const affectedLocations = new Set();
+@@ -495,29 +631,18 @@ function checkEmergencyRain(dataArray) {
+   dataArray.forEach(loc => {
+     if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
+     
+-    // 誘몃━ 怨꾩궛??hourlyAlerts瑜??ъ슜?섍굅???덈줈 怨꾩궛
+-    const alerts = loc.hourlyAlerts || [];
++    const periods = findEmergencyPeriods(loc.hourlyTimes, loc.hourlyPrecips, now);
+     
+-    loc.hourlyTimes.forEach((timeStr, i) => {
+-      const precip = loc.hourlyPrecips[i];
+-      const alertType = alerts[i] || 'none';
+-      
+-      if (alertType !== 'none') {
+-        const [datePart, timePart] = timeStr.split('T');
+-        const targetTime = new Date(timeStr).getTime();
+-        
+-        // 怨쇨굅 ?곗씠???쒖쇅 (?꾩옱 ?쒓컖 ?댄썑留?
+-        if (targetTime >= now) {
+-          affectedLocations.add(loc.name);
+-          emergencyLogs.push({
++    periods.forEach(p => {
++        affectedLocations.add(loc.name);
++        emergencyLogs.push({
+             name: loc.name,
+-            date: datePart,
+-            time: timePart,
+-            precip: precip,
+-            type: alertType
+-          });
+-        }
+-      }
++            date: p.dateDisplay,
++            time: p.timeDisplay,
++            precip: p.precip,
++            type: p.type,
++            sortTime: p.sortTime
++        });
+     });
+   });
+   
+@@ -529,16 +654,17 @@ function checkEmergencyRain(dataArray) {
+     tbody.innerHTML = '';
+     
+     // ?쒓컙???뺣젹
+-    emergencyLogs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
++    emergencyLogs.sort((a, b) => a.sortTime - b.sortTime);
+     
+     emergencyLogs.forEach(log => {
++      const badgeClass = log.type === '寃쎈낫' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-orange-100 text-orange-700 border-orange-200';
+       tbody.innerHTML += `
+         <tr class="hover:bg-slate-50 transition-colors">
+-          <td class="px-4 py-3 font-bold text-slate-800">${log.name}<\/td>
+-          <td class="px-4 py-3 text-slate-600">${log.date}<\/td>
+-          <td class="px-4 py-3 text-slate-600">${log.time}<\/td>
+-          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)}<\/td>
+-        <\/tr>
++          <td class="px-4 py-3 font-bold text-slate-800">${log.name} <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded border ${badgeClass}">${log.type}</span></td>
++          <td class="px-4 py-3 text-slate-600">${log.date}</td>
++          <td class="px-4 py-3 text-slate-600">${log.time}</td>
++          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)} <span class="text-xs text-slate-400 font-normal">mm</span></td>
++        </tr>
+       `;
+     });
+     
+
+commit 602bfb41431e3bb684c264a8f9410d768d44001b
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Thu Jul 9 14:34:04 2026 +0900
+
+    chore: Restore version 97 from Apps Script
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index 264a201..eb59cb0 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -65,6 +65,22 @@ window.showToast = function(message, isError = false) {
+   }, 3000);
+ };
+ 
++window.getPeriodText = function(sDateStr, eDateStr) {
++  if (!sDateStr || !eDateStr) return '?좏깮 湲곌컙';
++  const s = new Date(sDateStr);
++  const e = new Date(eDateStr);
++  const diffDays = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
++  const today = new Date();
++  const offset = today.getTimezoneOffset() * 60000;
++  const todayStr = (new Date(today - offset)).toISOString().split('T')[0];
++  
++  if (eDateStr === todayStr) {
++      return `理쒓렐 ${diffDays}??;
++  } else {
++      return `${diffDays}?쇨컙`;
++  }
++};
++
+ // 2. Fetch 諛?Mapping 濡쒖쭅 援ъ“?? async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
+   const CACHE_TTL = 60 * 60 * 1000; // 60遺?TTL
+@@ -126,6 +142,60 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+     
+     updateLastTimeString(serverLastUpdated);
+ 
++    // 湲곗긽泥??밸낫 湲곗? ?먮퀎 (?⑥씪 ?덈꺼 諛섑솚)
++    function getAlertLevel(precips) {
++        let level = 'none';
++        for (let i = 0; i < precips.length; i++) {
++            let sum3h = 0;
++            for (let j = 0; j < 3 && i + j < precips.length; j++) sum3h += precips[i+j];
++            let sum12h = 0;
++            for (let j = 0; j < 12 && i + j < precips.length; j++) sum12h += precips[i+j];
++            
++            if (sum3h >= 90 || sum12h >= 180) return 'red';
++            if (sum3h >= 60 || sum12h >= 110) level = 'orange';
++        }
++        return level;
++    }
++
++    // ?쒓컙蹂?諛곗뿴 ?붿냼留덈떎 ?밸낫 湲곗? ?먮퀎 諛곗뿴 諛섑솚 (Peak Hour ?⑥씪 ?쒖텧 濡쒖쭅)
++    function getAlertArray(precips) {
++        const alerts = new Array(precips.length).fill('none');
++        
++        for (let i = 0; i < precips.length; i++) {
++            // 3?쒓컙 ?꾩쟻 寃??+            let sum3h = 0;
++            let max3h = -1;
++            let max3hIdx = i;
++            for (let j = 0; j < 3 && i + j < precips.length; j++) {
++                sum3h += precips[i+j];
++                if (precips[i+j] > max3h) {
++                    max3h = precips[i+j];
++                    max3hIdx = i+j;
++                }
++            }
++            
++            // 12?쒓컙 ?꾩쟻 寃??+            let sum12h = 0;
++            let max12h = -1;
++            let max12hIdx = i;
++            for (let j = 0; j < 12 && i + j < precips.length; j++) {
++                sum12h += precips[i+j];
++                if (precips[i+j] > max12h) {
++                    max12h = precips[i+j];
++                    max12hIdx = i+j;
++                }
++            }
++            
++            // ?꾧퀎媛?珥덇낵 ?? ?대떦 援ш컙 ??'理쒕? 媛뺤닔???쒓컙'?먮쭔 諭껋? 遺??+            if (sum3h >= 90) alerts[max3hIdx] = 'red';
++            else if (sum3h >= 60 && alerts[max3hIdx] !== 'red') alerts[max3hIdx] = 'orange';
++            
++            if (sum12h >= 180) alerts[max12hIdx] = 'red';
++            else if (sum12h >= 110 && alerts[max12hIdx] !== 'red') alerts[max12hIdx] = 'orange';
++        }
++        return alerts;
++    }
++
+     // ?곗씠???뺢퇋??Mapping) 泥섎━
+     const processedData = locations.map((loc, index) => {
+         const data = results[index] || {};
+@@ -135,8 +205,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+         // AWS?먯꽌 ?쒕쾭媛 怨꾩궛?댁? 怨쇨굅 ?꾩쟻 媛뺤닔???ъ슜 (?놁쑝硫?0.0)
+         const totalPrecip = data.historyTotal !== undefined ? Number(data.historyTotal).toFixed(1) : '0.0';
+         
+-        // 湲곗긽 肄붾뱶媛 ?놁쑝誘濡?媛뺤닔 ?щ?濡?留묒쓬(0)/鍮?61) ?꾩떆 ?泥?-        const conditionCode = (parseFloat(totalPrecip) > 0) ? 61 : 0;
++        // 吏꾩쭨 ?ㅼ떆媛??좎뵪 肄붾뱶(data.current.code) ?곗꽑 ?곸슜. (?놁쑝硫?怨쇨굅泥섎읆 媛뺤닔??湲곕컲 ?꾩떆 ?泥?
++        const conditionCode = data.current?.code !== undefined ? data.current.code : ((parseFloat(totalPrecip) > 0) ? 61 : 0);
+         const condition = getWeatherCondition(conditionCode); 
+ 
+         // 2. ?ν썑 24?쒓컙 媛뺤닔??(湲곗긽泥??④린?덈낫)
+@@ -219,19 +289,12 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+ 
+         const next10dPrecip = next10dSum.toFixed(1);
+ 
+-        // 4. Sliding Window 寃쎈낫 ?덈꺼 ?먮퀎 (1?쒓컙 50mm, 3?쒓컙 90mm ??
++        // 4. Sliding Window 寃쎈낫 ?덈꺼 ?먮퀎 (1?쒓컙 50mm, 3?쒓컙 90mm ??-> 湲곗긽泥?3?쒓컙/12?쒓컙 湲곗??쇰줈 蹂寃?
++        const max24hAlert = getAlertLevel(hourlyPrecips);
++        const max10dAlert = getAlertLevel(futureHourlyPrecips);
+         let alertLevel = 'none';
+-        for (let i = 0; i < targetPrecips.length; i++) {
+-            const p1 = targetPrecips[i];
+-            const p2 = i + 1 < targetPrecips.length ? targetPrecips[i + 1] : 0;
+-            const p3 = i + 2 < targetPrecips.length ? targetPrecips[i + 2] : 0;
+-            const sum3h = p1 + p2 + p3;
+-            if (sum3h >= 90 || p1 >= 50) {
+-                alertLevel = 'red'; break;
+-            } else if ((sum3h >= 60 || p1 >= 30) && alertLevel !== 'red') {
+-                alertLevel = 'orange';
+-            }
+-        }
++        if (max24hAlert === 'red' || max10dAlert === 'red') alertLevel = 'red';
++        else if (max24hAlert === 'orange' || max10dAlert === 'orange') alertLevel = 'orange';
+ 
+         return {
+             ...loc,
+@@ -241,14 +304,18 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+             next24hPrecip,
+             next10dPrecip,
+             alertLevel,
++            max24hAlert,
++            max10dAlert,
+             dailyDates: data.dailyDates || [],
+             dailyPrecips: data.dailyPrecips || [],
+             futureDates: futureDates,
+             futurePrecips: futurePrecips,
+             futureHourlyTimes: futureHourlyTimes,
+             futureHourlyPrecips: futureHourlyPrecips,
++            futureHourlyAlerts: getAlertArray(futureHourlyPrecips),
+             hourlyTimes: hourlyTimes,
+             hourlyPrecips: hourlyPrecips,
++            hourlyAlerts: getAlertArray(hourlyPrecips),
+             historyHourlyTimes: data.historyHourlyTimes || [],
+             historyHourlyPrecips: data.historyHourlyPrecips || []
+         };
+@@ -294,16 +361,26 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+ }
+ 
+ function updateLastTimeString(serverString) {
++  let timeStr = '';
+   if (serverString) {
+-    document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${serverString}`;
++    timeStr = `理쒖쥌 媛깆떊: ${serverString}`;
+   } else {
+     const now = new Date();
+-    document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${now.toLocaleTimeString('ko-KR')}`;
++    timeStr = `理쒖쥌 媛깆떊: ${now.toLocaleTimeString('ko-KR')}`;
++  }
++  
++  // 1. 硫붿씤 ?붾㈃ 媛깆떊
++  document.getElementById('last-updated').innerText = timeStr;
++  
++  // 2. 留??대? ?띿뒪???숆린??+  const mapModalInfo = document.getElementById('map-modal-info');
++  if (mapModalInfo) {
++    mapModalInfo.textContent = timeStr;
+   }
+ }
+ 
+ // 3. UI ?뚮뜑留?濡쒖쭅
+-function renderCards(dataArray) {
++function renderCards(dataArray, periodText = '') {
+   const grid = document.getElementById('weather-grid');
+   grid.innerHTML = '';
+   
+@@ -328,20 +405,35 @@ function renderCards(dataArray) {
+     bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color}`;
+     card.appendChild(bgBlur);
+ 
++    // 紐⑥꽌由?由щ낯 諭껋? (寃쎈낫/二쇱쓽)
++    if (data.alertLevel === 'red') {
++      const badge = document.createElement('div');
++      badge.className = 'absolute top-0 left-0 bg-red-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20 animate-pulse';
++      badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ?몄슦寃쎈낫';
++      card.appendChild(badge);
++    } else if (data.alertLevel === 'orange') {
++      const badge = document.createElement('div');
++      badge.className = 'absolute top-0 left-0 bg-orange-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-br-lg shadow-sm z-20';
++      badge.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> ?몄슦二쇱쓽蹂?;
++      card.appendChild(badge);
++    }
++
+     const innerContent = document.createElement('div');
+     innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
+     
+     innerContent.innerHTML = `
+       <div class="flex justify-between items-center mb-4">
+-        <!-- 醫뚯륫: 吏?먮챸 + 吏??蹂닿린 踰꾪듉 -->
++        <!-- 醫뚯륫: 吏?먮챸 -->
+         <div class="flex items-center gap-3">
+-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0 cursor-pointer hover:text-blue-600 md:hover:text-blue-400 transition-colors group/title flex items-center gap-1" onclick='window.openSubRegionModal("${data.id}", "${data.name}")'>
+-            ${data.name} <i class="fa-solid fa-circle-chevron-down text-sm opacity-30 group-hover/title:opacity-100 transition-opacity"><\/i>
+-          <\/h2>
+-          <button class="map-view-btn shrink-0" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
+-            <i class="fa-solid fa-map-location-dot"><\/i> 吏??蹂닿린
+-          <\/button>
+-        <\/div>
++          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
++            ${data.name}
++          </h2>
++          ${data.name !== '怨쇱쿇' ? `
++          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
++            <i class="fa-solid fa-list-ul"></i> ?띾㈃??蹂닿린
++          </button>
++          ` : ''}
++        </div>
+         
+         <!-- ?곗륫: 湲곗삩 + ?좎뵪 ?꾩씠肄??명듃 -->
+         <div class="flex items-center gap-3 sm:gap-4">
+@@ -355,29 +447,39 @@ function renderCards(dataArray) {
+       
+       <div class="space-y-3 mt-auto">
+          <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">?좏깮 湲곌컙 媛뺤닔??<i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 媛뺤닔??<i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
+           <div class="text-right flex items-baseline gap-1">
+              <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
+              <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+           <\/div>
+         <\/div>
+         
+-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"><\/i>?ν썑 24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"><\/i><\/span>
+-          <div class="text-right flex items-baseline gap-1">
+-             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}<\/span>
+-             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+-          <\/div>
+-        <\/div>
++        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
++            <i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"></i>
++          </span>
++          <div class="text-right flex items-center justify-end gap-1.5">
++             ${data.max24hAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             <div class="flex items-baseline gap-1">
++               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
++               <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
++             </div>
++          </div>
++        </div>
+ 
+-        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)})'>
+-          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"><\/i>?ν썑 10???덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"><\/i><\/span>
+-          <div class="text-right flex items-baseline gap-1">
+-             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}<\/span>
+-             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+-          <\/div>
+-        <\/div>
+-      <\/div>
++        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
++            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10???덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"></i>
++          </span>
++          <div class="text-right flex items-center justify-end gap-1.5">
++             ${data.max10dAlert === 'red' ? `<span class="bg-red-500/10 border border-red-500/30 text-red-600 md:text-red-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">寃쎈낫</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-orange-500/10 border border-orange-500/30 text-orange-600 md:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-sm">二쇱쓽</span>` : '')}
++             <div class="flex items-baseline gap-1">
++               <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
++               <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
++             </div>
++          </div>
++        </div>
++      </div>
+     `;
+     
+     card.appendChild(innerContent);
+@@ -386,16 +488,21 @@ function renderCards(dataArray) {
+ }
+ 
+ function checkEmergencyRain(dataArray) {
+-  const threshold = 50.0;
+   const emergencyLogs = [];
+   const affectedLocations = new Set();
+   const now = Date.now();
+   
+   dataArray.forEach(loc => {
+     if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
++    
++    // 誘몃━ 怨꾩궛??hourlyAlerts瑜??ъ슜?섍굅???덈줈 怨꾩궛
++    const alerts = loc.hourlyAlerts || [];
++    
+     loc.hourlyTimes.forEach((timeStr, i) => {
+       const precip = loc.hourlyPrecips[i];
+-      if (precip >= threshold) {
++      const alertType = alerts[i] || 'none';
++      
++      if (alertType !== 'none') {
+         const [datePart, timePart] = timeStr.split('T');
+         const targetTime = new Date(timeStr).getTime();
+         
+@@ -406,7 +513,8 @@ function checkEmergencyRain(dataArray) {
+             name: loc.name,
+             date: datePart,
+             time: timePart,
+-            precip: precip
++            precip: precip,
++            type: alertType
+           });
+         }
+       }
+
+commit 9efaf5be38c5bfffc9ce056227c7e561ddfb4cb8
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Tue Jul 7 20:28:56 2026 +0900
+
+    chore: ?묒뾽 ??濡ㅻ갚 湲곗젏 諛깆뾽
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+index 6903547..264a201 100644
+--- a/src/JS_Logic.html
++++ b/src/JS_Logic.html
+@@ -78,7 +78,7 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+     const data = JSON.parse(cached);
+     if (Date.now() - data.timestamp < CACHE_TTL) {
+       console.log('Using cached data for', startDateStr, 'to', endDateStr);
+-      updateLastTimeString();
++      updateLastTimeString(data.lastUpdated);
+       document.getElementById('loading-indicator').classList.add('hidden');
+       return data.payload;
+     }
+@@ -91,16 +91,19 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+     const lats = locations.map(l => l.lat).join(',');
+     const lons = locations.map(l => l.lon).join(',');
+     const locNamesStr = locations.map(l => l.name).join(',');
++    // 愿痢≪냼 ?대쫫 留ㅼ묶??(?뱀쭊? '諛깅졊??濡?留ㅼ묶)
++    const matchNamesStr = locations.map(l => l.name === '?뱀쭊' ? '諛깅졊?? : l.name).join(',');
+     
+     console.log('Fetching Hybrid Data via GAS Backend...');
+     let results;
++    let serverLastUpdated = null;
+     
+     // 濡쒖뺄/?뚯뒪???섍꼍?먯꽌 google 媛앹껜媛 ?놁쓣 寃쎌슦瑜??鍮?     if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+         throw new Error("GAS ?섍꼍(google.script.run)??李얠쓣 ???놁뒿?덈떎.");
+     }
+     
+-    results = await new Promise((resolve, reject) => {
++    const responseObj = await new Promise((resolve, reject) => {
+         google.script.run
+             .withSuccessHandler((res) => {
+                 try {
+@@ -108,9 +111,21 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+                 } catch(e) { reject(e); }
+             })
+             .withFailureHandler(reject)
+-            .getMergedWeatherData(lats, lons, locNamesStr, startDateStr, endDateStr);
++            .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
+     });
+ 
++    if (responseObj && responseObj.payload) {
++        results = responseObj.payload;
++        serverLastUpdated = responseObj.lastUpdated;
++    } else {
++        results = responseObj;
++        if (results && results.length > 0 && results[0].lastUpdated) {
++            serverLastUpdated = results[0].lastUpdated;
++        }
++    }
++    
++    updateLastTimeString(serverLastUpdated);
++
+     // ?곗씠???뺢퇋??Mapping) 泥섎━
+     const processedData = locations.map((loc, index) => {
+         const data = results[index] || {};
+@@ -130,33 +145,79 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+         const hourlyTimes = [];
+         const hourlyPrecips = [];
+         
+-        if (data.forecast24h && data.forecast24h.precip_hourly) {
+-            data.forecast24h.precip_hourly.forEach(p => {
+-                let pValue = parseFloat(p.value);
+-                if (isNaN(pValue)) {
+-                   if (p.value === "媛뺤닔?놁쓬") pValue = 0;
+-                   else pValue = 0;
+-                }
+-                next24hSum += pValue;
+-                targetPrecips.push(pValue);
+-                
+-                // ?좎쭨 ?щ㎎ 蹂??(YYYYMMDD -> YYYY-MM-DDT...)
+-                const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
+-                hourlyTimes.push(dtStr);
+-                hourlyPrecips.push(pValue);
+-            });
++        if (data.forecast24h) {
++            if (data.forecast24h.precip_hourly) {
++                data.forecast24h.precip_hourly.forEach(p => {
++                    let pValue = parseFloat(p.value);
++                    if (isNaN(pValue)) pValue = 0;
++                    next24hSum += pValue;
++                    targetPrecips.push(pValue);
++                    const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
++                    hourlyTimes.push(dtStr);
++                    hourlyPrecips.push(pValue);
++                });
++            } else {
++                const keys = Object.keys(data.forecast24h).sort();
++                keys.slice(0, 24).forEach(key => {
++                    let pValue = parseFloat(data.forecast24h[key]);
++                    if (isNaN(pValue)) pValue = 0;
++                    next24hSum += pValue;
++                    targetPrecips.push(pValue);
++                    let dtStr = key;
++                    if (key.length >= 16) {
++                        dtStr = key.substring(0, 16);
++                    } else if (key.length === 12) {
++                        dtStr = `${key.substring(0,4)}-${key.substring(4,6)}-${key.substring(6,8)}T${key.substring(8,10)}:00`;
++                    }
++                    hourlyTimes.push(dtStr);
++                    hourlyPrecips.push(pValue);
++                });
++            }
+         }
+         const next24hPrecip = next24hSum.toFixed(1);
+ 
+-        // 3. ?ν썑 10??媛뺤닔??(Open-Meteo ?좎?)
+-        let next10dSum = 0;
++        // 3. ?ν썑 10??媛뺤닔??(?꾩옱 ?쒓컙 湲곗? ?꾪꽣留?
++        const futureHourlyTimes = [];
++        const futureHourlyPrecips = [];
++        if (data.forecast10dHourly) {
++            Object.keys(data.forecast10dHourly).sort().forEach(key => {
++                futureHourlyTimes.push(key);
++                let pValue = parseFloat(data.forecast10dHourly[key]);
++                if (isNaN(pValue)) pValue = 0;
++                futureHourlyPrecips.push(pValue);
++            });
++        }
++
+         const futureDates = data.forecast10d?.time || [];
+-        const futurePrecips = data.forecast10d?.precipitation_sum || [];
+-        futurePrecips.forEach(p => next10dSum += (p || 0));
++        const futurePrecips = [];
++        let next10dSum = 0;
++        const nowMs = Date.now();
++
++        futureDates.forEach((dateStr, idx) => {
++            let dailySum = 0;
++            let matchedHours = 0;
++            
++            for(let i = 0; i < futureHourlyTimes.length; i++) {
++                if(futureHourlyTimes[i].startsWith(dateStr)) {
++                    matchedHours++;
++                    const itemTime = new Date(futureHourlyTimes[i]).getTime();
++                    // ?꾩옱 ?쒓컙蹂대떎 誘몃옒???쒓컙???媛뺤닔?됰쭔 ?⑹궛
++                    if (itemTime > nowMs) {
++                        dailySum += futureHourlyPrecips[i];
++                    }
++                }
++            }
++            
++            // ?쒓컙蹂??곗씠?곌? ?꾩삁 ?녿뒗 ?좎쭨??寃쎌슦 ?먮낯 daily ?곗씠?곕? ?대갚?쇰줈 ?ъ슜
++            if (matchedHours === 0) {
++                dailySum = data.forecast10d?.precipitation_sum?.[idx] || 0;
++            }
++            
++            futurePrecips.push(dailySum);
++            next10dSum += dailySum;
++        });
++
+         const next10dPrecip = next10dSum.toFixed(1);
+-        
+-        const futureHourlyTimes = data.forecast10dHourly?.time || [];
+-        const futureHourlyPrecips = data.forecast10dHourly?.precipitation || [];
+ 
+         // 4. Sliding Window 寃쎈낫 ?덈꺼 ?먮퀎 (1?쒓컙 50mm, 3?쒓컙 90mm ??
+         let alertLevel = 'none';
+@@ -196,7 +257,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+     // SessionStorage 罹먯떛 ???     sessionStorage.setItem(cacheKey, JSON.stringify({
+       timestamp: Date.now(),
+-      payload: processedData
++      payload: processedData,
++      lastUpdated: serverLastUpdated
+     }));
+ 
+     // [?뺤떇 湲곕뒫] URL ?뚮씪誘명꽣 ?mode=test_rain 湲곗긽 寃쎈낫 ?쒖뒪???뚯뒪??紐⑤뱶
+@@ -231,9 +293,13 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false)
+   }
+ }
+ 
+-function updateLastTimeString() {
+-  const now = new Date();
+-  document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${now.toLocaleTimeString('ko-KR')}`;
++function updateLastTimeString(serverString) {
++  if (serverString) {
++    document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${serverString}`;
++  } else {
++    const now = new Date();
++    document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${now.toLocaleTimeString('ko-KR')}`;
++  }
+ }
+ 
+ // 3. UI ?뚮뜑留?濡쒖쭅
+
+commit b899494965440d7921b7298d0c94a90529e859eb
+Author: choigoda-kr <admin@choigoda.kr>
+Date:   Thu Jun 25 09:36:15 2026 +0900
+
+    feat: Iframe 臾댁쨷???꾨쿋??諛⑹떇 ?곸슜 諛??붾젆?좊━ 遺꾨━(src/)
+
+diff --git a/src/JS_Logic.html b/src/JS_Logic.html
+new file mode 100644
+index 0000000..6903547
+--- /dev/null
++++ b/src/JS_Logic.html
+@@ -0,0 +1,374 @@
++<script>
++// 1. 20媛?吏???곗씠????援ъ텞 (愿묒뿭 4媛??좉퇋 + 湲곗〈 16媛??좎?)
++const locations = [
++  { id: 'gwacheon', name: '怨쇱쿇', lat: 37.4262, lon: 126.9890 }, // 怨쇱쿇(590) AWS
++  { id: 'yeoju', name: '?ъ＜', lat: 37.2917, lon: 127.6372 }, // ?ъ＜(465) AWS
++  { id: 'icheon', name: '?댁쿇', lat: 37.2640, lon: 127.4842 }, // ?댁쿇(203) ASOS
++  { id: 'yangpyeong', name: '?묓룊', lat: 37.4886, lon: 127.4944 }, // ?묓룊(202) ASOS
++  { id: 'hwaseong', name: '?붿꽦', lat: 37.1651, lon: 126.8285 }, // ?붿꽦(488) AWS
++  { id: 'suwon', name: '?섏썝', lat: 37.2574, lon: 126.9830 }, // ?섏썝(119) ASOS
++  { id: 'yeoncheon', name: '?곗쿇', lat: 38.0964, lon: 127.0744 }, // ?곗쿇(491) AWS
++  { id: 'pocheon', name: '?ъ쿇', lat: 37.8949, lon: 127.2003 }, // ?ъ쿇(473) AWS
++  { id: 'paju', name: '?뚯＜', lat: 37.8859, lon: 126.7661 }, // ?뚯＜(99) ASOS
++  { id: 'goyang', name: '怨좎뼇', lat: 37.6401, lon: 126.8322 }, // 怨좎뼇(540) AWS
++  { id: 'ganghwa', name: '媛뺥솕', lat: 37.7074, lon: 126.4463 }, // 媛뺥솕(201) ASOS
++  { id: 'ongjin', name: '?뱀쭊', lat: 37.9660, lon: 124.6305 }, // 諛깅졊??102) ASOS
++  { id: 'gimpo', name: '源??, lat: 37.6049, lon: 126.7151 }, // 源??441) AWS
++  { id: 'pyeongtaek', name: '?됲깮', lat: 36.9926, lon: 127.1129 }, // ?됲깮(356) AWS
++  { id: 'anseong', name: '?덉꽦', lat: 37.0116, lon: 127.2758 }  // ?덉꽦(470) AWS
++];
++
++// Open-Meteo WMO Code ?뚯떛 ?⑥닔
++function getWeatherCondition(code) {
++  switch (true) {
++    case code === 0: return { text: '留묒쓬', icon: 'fa-sun', color: 'text-amber-500 md:text-yellow-400' };
++    case code === 1: return { text: '?泥대줈 留묒쓬', icon: 'fa-cloud-sun', color: 'text-orange-500 md:text-yellow-300' };
++    case code === 2: return { text: '援щ쫫議곌툑', icon: 'fa-cloud', color: 'text-slate-500 md:text-slate-300' };
++    case code === 3: return { text: '?먮┝', icon: 'fa-cloud', color: 'text-slate-600 md:text-slate-400' };
++    case (code >= 45 && code <= 48): return { text: '?덇컻', icon: 'fa-smog', color: 'text-slate-500 md:text-slate-400' };
++    case (code >= 51 && code <= 55): return { text: '?댁뒳鍮?, icon: 'fa-cloud-rain', color: 'text-blue-500 md:text-blue-300' };
++    case (code >= 61 && code <= 65): return { text: '鍮?, icon: 'fa-cloud-showers-heavy', color: 'text-blue-600 md:text-blue-500' };
++    case (code >= 71 && code <= 77): return { text: '??, icon: 'fa-snowflake', color: 'text-sky-500 md:text-white' };
++    case (code >= 80 && code <= 82): return { text: '?뚮굹湲?, icon: 'fa-cloud-showers-water', color: 'text-blue-500 md:text-blue-400' };
++    case (code >= 95 && code <= 99): return { text: '?뚯슦', icon: 'fa-cloud-bolt', color: 'text-indigo-600 md:text-yellow-500' };
++    default: return { text: '?뚯닔?놁쓬', icon: 'fa-circle-question', color: 'text-slate-500 md:text-slate-500' };
++  }
++}
++
++// ?꾩뿭 Toast 硫붿떆吏 ?⑥닔
++window.showToast = function(message, isError = false) {
++  const container = document.getElementById('toast-container');
++  if (!container) return;
++  
++  const toast = document.createElement('div');
++  const bgColor = isError ? 'bg-red-500' : 'bg-slate-800 md:bg-blue-600';
++  const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"><\/i>' : '<i class="fa-solid fa-circle-info"><\/i>';
++  
++  toast.className = `flex items-center gap-2 px-4 py-3 text-white text-sm font-medium rounded shadow-lg transition-all duration-300 transform translate-y-4 opacity-0 ${bgColor}`;
++  toast.innerHTML = `${icon} <span>${message}<\/span>`;
++  
++  container.appendChild(toast);
++  
++  // ?섏씠?쒖씤 ?좊땲硫붿씠??+  requestAnimationFrame(() => {
++    toast.classList.remove('translate-y-4', 'opacity-0');
++  });
++  
++  // 3珥????섏씠?쒖븘??諛??쒓굅
++  setTimeout(() => {
++    toast.classList.add('opacity-0', 'translate-y-2');
++    setTimeout(() => {
++      if(container.contains(toast)) {
++        container.removeChild(toast);
++      }
++    }, 300);
++  }, 3000);
++};
++
++// 2. Fetch 諛?Mapping 濡쒖쭅 援ъ“??+async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
++  const CACHE_TTL = 60 * 60 * 1000; // 60遺?TTL
++  const cacheKey = `weather_data_v4_${startDateStr}_${endDateStr}`;
++  const cached = sessionStorage.getItem(cacheKey);
++
++  const urlParamsForCache = new URLSearchParams(window.location.search);
++  const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
++
++  if (!isTestMode && !forceRefresh && cached) {
++    const data = JSON.parse(cached);
++    if (Date.now() - data.timestamp < CACHE_TTL) {
++      console.log('Using cached data for', startDateStr, 'to', endDateStr);
++      updateLastTimeString();
++      document.getElementById('loading-indicator').classList.add('hidden');
++      return data.payload;
++    }
++  }
++
++  // 濡쒕뵫 ?곹깭 ?쒖옉
++  document.getElementById('loading-indicator').classList.remove('hidden');
++
++  try {
++    const lats = locations.map(l => l.lat).join(',');
++    const lons = locations.map(l => l.lon).join(',');
++    const locNamesStr = locations.map(l => l.name).join(',');
++    
++    console.log('Fetching Hybrid Data via GAS Backend...');
++    let results;
++    
++    // 濡쒖뺄/?뚯뒪???섍꼍?먯꽌 google 媛앹껜媛 ?놁쓣 寃쎌슦瑜??鍮?+    if (typeof google === 'undefined' || typeof google.script === 'undefined') {
++        throw new Error("GAS ?섍꼍(google.script.run)??李얠쓣 ???놁뒿?덈떎.");
++    }
++    
++    results = await new Promise((resolve, reject) => {
++        google.script.run
++            .withSuccessHandler((res) => {
++                try {
++                    resolve(JSON.parse(res));
++                } catch(e) { reject(e); }
++            })
++            .withFailureHandler(reject)
++            .getMergedWeatherData(lats, lons, locNamesStr, startDateStr, endDateStr);
++    });
++
++    // ?곗씠???뺢퇋??Mapping) 泥섎━
++    const processedData = locations.map((loc, index) => {
++        const data = results[index] || {};
++        
++        // 1. 湲곗긽 ?곹깭 諛??ㅽ솴 ?곗씠???뚯떛
++        const currentTemp = data.current?.temp !== undefined ? Number(data.current.temp).toFixed(1) : '-';
++        // AWS?먯꽌 ?쒕쾭媛 怨꾩궛?댁? 怨쇨굅 ?꾩쟻 媛뺤닔???ъ슜 (?놁쑝硫?0.0)
++        const totalPrecip = data.historyTotal !== undefined ? Number(data.historyTotal).toFixed(1) : '0.0';
++        
++        // 湲곗긽 肄붾뱶媛 ?놁쑝誘濡?媛뺤닔 ?щ?濡?留묒쓬(0)/鍮?61) ?꾩떆 ?泥?+        const conditionCode = (parseFloat(totalPrecip) > 0) ? 61 : 0;
++        const condition = getWeatherCondition(conditionCode); 
++
++        // 2. ?ν썑 24?쒓컙 媛뺤닔??(湲곗긽泥??④린?덈낫)
++        let next24hSum = 0;
++        const targetPrecips = [];
++        const hourlyTimes = [];
++        const hourlyPrecips = [];
++        
++        if (data.forecast24h && data.forecast24h.precip_hourly) {
++            data.forecast24h.precip_hourly.forEach(p => {
++                let pValue = parseFloat(p.value);
++                if (isNaN(pValue)) {
++                   if (p.value === "媛뺤닔?놁쓬") pValue = 0;
++                   else pValue = 0;
++                }
++                next24hSum += pValue;
++                targetPrecips.push(pValue);
++                
++                // ?좎쭨 ?щ㎎ 蹂??(YYYYMMDD -> YYYY-MM-DDT...)
++                const dtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
++                hourlyTimes.push(dtStr);
++                hourlyPrecips.push(pValue);
++            });
++        }
++        const next24hPrecip = next24hSum.toFixed(1);
++
++        // 3. ?ν썑 10??媛뺤닔??(Open-Meteo ?좎?)
++        let next10dSum = 0;
++        const futureDates = data.forecast10d?.time || [];
++        const futurePrecips = data.forecast10d?.precipitation_sum || [];
++        futurePrecips.forEach(p => next10dSum += (p || 0));
++        const next10dPrecip = next10dSum.toFixed(1);
++        
++        const futureHourlyTimes = data.forecast10dHourly?.time || [];
++        const futureHourlyPrecips = data.forecast10dHourly?.precipitation || [];
++
++        // 4. Sliding Window 寃쎈낫 ?덈꺼 ?먮퀎 (1?쒓컙 50mm, 3?쒓컙 90mm ??
++        let alertLevel = 'none';
++        for (let i = 0; i < targetPrecips.length; i++) {
++            const p1 = targetPrecips[i];
++            const p2 = i + 1 < targetPrecips.length ? targetPrecips[i + 1] : 0;
++            const p3 = i + 2 < targetPrecips.length ? targetPrecips[i + 2] : 0;
++            const sum3h = p1 + p2 + p3;
++            if (sum3h >= 90 || p1 >= 50) {
++                alertLevel = 'red'; break;
++            } else if ((sum3h >= 60 || p1 >= 30) && alertLevel !== 'red') {
++                alertLevel = 'orange';
++            }
++        }
++
++        return {
++            ...loc,
++            condition,
++            currentTemp,
++            totalPrecip,
++            next24hPrecip,
++            next10dPrecip,
++            alertLevel,
++            dailyDates: data.dailyDates || [],
++            dailyPrecips: data.dailyPrecips || [],
++            futureDates: futureDates,
++            futurePrecips: futurePrecips,
++            futureHourlyTimes: futureHourlyTimes,
++            futureHourlyPrecips: futureHourlyPrecips,
++            hourlyTimes: hourlyTimes,
++            hourlyPrecips: hourlyPrecips,
++            historyHourlyTimes: data.historyHourlyTimes || [],
++            historyHourlyPrecips: data.historyHourlyPrecips || []
++        };
++    });
++
++    // SessionStorage 罹먯떛 ???+    sessionStorage.setItem(cacheKey, JSON.stringify({
++      timestamp: Date.now(),
++      payload: processedData
++    }));
++
++    // [?뺤떇 湲곕뒫] URL ?뚮씪誘명꽣 ?mode=test_rain 湲곗긽 寃쎈낫 ?쒖뒪???뚯뒪??紐⑤뱶
++    const urlParams = new URLSearchParams(window.location.search);
++    if (urlParams.get('mode') === 'test_rain' && processedData && processedData.length >= 2) {
++      console.log('[Mock Mode] ?mode=test_rain ?몄슦 寃쎈낫 ?쒖뒪??媛???뚯뒪??媛??);
++      
++      // 1. 怨쇱쿇 (index 0) -> 二쇱쓽蹂?orange) 二쇱엯
++      processedData[0].alertLevel = 'orange';
++      
++      // 2. ?ъ＜ (index 1) -> 寃쎈낫(red) 二쇱엯 諛?1?쒓컙 媛뺤닔??55.5mm ?꾩떆 異붽??섏뿬 湲닿툒 紐⑤떖 ?몃━嫄?+      processedData[1].alertLevel = 'red';
++      
++      const futureHour = new Date(Date.now() + 2 * 60 * 60 * 1000);
++      const offset = futureHour.getTimezoneOffset() * 60000;
++      const futureLocalStr = new Date(futureHour - offset).toISOString().substring(0, 16);
++      
++      processedData[1].hourlyTimes.push(futureLocalStr);
++      processedData[1].hourlyPrecips.push(55.5);
++    }
++
++    document.getElementById('loading-indicator').classList.add('hidden');
++    updateLastTimeString();
++
++    return processedData;
++    
++  } catch (error) {
++    console.error('[GAS Fetch Exception]', error);
++    document.getElementById('loading-indicator').classList.add('hidden');
++    window.showToast('?곗씠??濡쒕뱶 ?ㅽ뙣 (GAS ?섍꼍 ?뺤씤 ?붾쭩)', true);
++    return null;
++  }
++}
++
++function updateLastTimeString() {
++  const now = new Date();
++  document.getElementById('last-updated').innerText = `理쒖쥌 媛깆떊: ${now.toLocaleTimeString('ko-KR')}`;
++}
++
++// 3. UI ?뚮뜑留?濡쒖쭅
++function renderCards(dataArray) {
++  const grid = document.getElementById('weather-grid');
++  grid.innerHTML = '';
++  
++  if(!dataArray || dataArray.length === 0) return;
++
++  // 湲닿툒 ?몄슦 ?뚮┝ 寃??(50mm ?댁긽)
++  checkEmergencyRain(dataArray);
++
++  dataArray.forEach(data => {
++    let borderClass = 'border-2 border-[#EEEEEE] md:border-transparent shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none';
++    if (data.alertLevel === 'red') {
++      borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)]';
++    } else if (data.alertLevel === 'orange') {
++      borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)]';
++    }
++
++    const card = document.createElement('div');
++    card.className = `weather-card rounded-2xl p-4 sm:p-5 pb-4 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-transparent relative overflow-hidden group ${borderClass} transition-all duration-300`;
++    
++    // ?μ떇??諛곌꼍 ?댄럺??+    const bgBlur = document.createElement('div');
++    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color}`;
++    card.appendChild(bgBlur);
++
++    const innerContent = document.createElement('div');
++    innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
++    
++    innerContent.innerHTML = `
++      <div class="flex justify-between items-center mb-4">
++        <!-- 醫뚯륫: 吏?먮챸 + 吏??蹂닿린 踰꾪듉 -->
++        <div class="flex items-center gap-3">
++          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0 cursor-pointer hover:text-blue-600 md:hover:text-blue-400 transition-colors group/title flex items-center gap-1" onclick='window.openSubRegionModal("${data.id}", "${data.name}")'>
++            ${data.name} <i class="fa-solid fa-circle-chevron-down text-sm opacity-30 group-hover/title:opacity-100 transition-opacity"><\/i>
++          <\/h2>
++          <button class="map-view-btn shrink-0" onclick='showMapModal(${JSON.stringify(data.name)}, ${data.lat}, ${data.lon}, ${JSON.stringify(data.condition.text)}, ${JSON.stringify(data.currentTemp)})'>
++            <i class="fa-solid fa-map-location-dot"><\/i> 吏??蹂닿린
++          <\/button>
++        <\/div>
++        
++        <!-- ?곗륫: 湲곗삩 + ?좎뵪 ?꾩씠肄??명듃 -->
++        <div class="flex items-center gap-3 sm:gap-4">
++          <span class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-sm sm:text-base font-normal">째C<\/span><\/span>
++          <div class="flex flex-col items-center shrink-0">
++            <i class="fa-solid ${data.condition.icon} text-3xl sm:text-4xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg mb-1 float-animation"><\/i>
++            <span class="text-[10px] sm:text-xs font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-2 py-0.5 rounded-full">${data.condition.text}<\/span>
++          <\/div>
++        <\/div>
++      <\/div>
++      
++      <div class="space-y-3 mt-auto">
++         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-3 sm:p-2 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">?좏깮 湲곌컙 媛뺤닔??<i class="fa-solid fa-chevron-right text-[11px] ml-0.5 opacity-50 group-hover/btn:opacity-100"><\/i><\/span>
++          <div class="text-right flex items-baseline gap-1">
++             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
++             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
++          <\/div>
++        <\/div>
++        
++        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)})'>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors"><i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"><\/i>?ν썑 24?쒓컙 ?덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn3:opacity-100"><\/i><\/span>
++          <div class="text-right flex items-baseline gap-1">
++             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}<\/span>
++             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
++          <\/div>
++        <\/div>
++
++        <div class="flex justify-between items-center px-3 py-2.5 sm:py-1.5 sm:px-2 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)})'>
++          <span class="text-base sm:text-lg text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors"><i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"><\/i>?ν썑 10???덉긽 <i class="fa-solid fa-chevron-right text-[11px] opacity-50 group-hover/btn2:opacity-100"><\/i><\/span>
++          <div class="text-right flex items-baseline gap-1">
++             <span class="text-3xl sm:text-2xl font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}<\/span>
++             <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm<\/span>
++          <\/div>
++        <\/div>
++      <\/div>
++    `;
++    
++    card.appendChild(innerContent);
++    grid.appendChild(card);
++  });
++}
++
++function checkEmergencyRain(dataArray) {
++  const threshold = 50.0;
++  const emergencyLogs = [];
++  const affectedLocations = new Set();
++  const now = Date.now();
++  
++  dataArray.forEach(loc => {
++    if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
++    loc.hourlyTimes.forEach((timeStr, i) => {
++      const precip = loc.hourlyPrecips[i];
++      if (precip >= threshold) {
++        const [datePart, timePart] = timeStr.split('T');
++        const targetTime = new Date(timeStr).getTime();
++        
++        // 怨쇨굅 ?곗씠???쒖쇅 (?꾩옱 ?쒓컖 ?댄썑留?
++        if (targetTime >= now) {
++          affectedLocations.add(loc.name);
++          emergencyLogs.push({
++            name: loc.name,
++            date: datePart,
++            time: timePart,
++            precip: precip
++          });
++        }
++      }
++    });
++  });
++  
++  if (emergencyLogs.length > 0) {
++    const locsArray = Array.from(affectedLocations).join(', ');
++    document.getElementById('emergency-modal-title').innerHTML = `<i class="fa-solid fa-triangle-exclamation"><\/i> 湲닿툒: ${locsArray}??媛뺥븳 ?몄슦 ?덉긽??;
++    
++    const tbody = document.getElementById('emergency-modal-tbody');
++    tbody.innerHTML = '';
++    
++    // ?쒓컙???뺣젹
++    emergencyLogs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
++    
++    emergencyLogs.forEach(log => {
++      tbody.innerHTML += `
++        <tr class="hover:bg-slate-50 transition-colors">
++          <td class="px-4 py-3 font-bold text-slate-800">${log.name}<\/td>
++          <td class="px-4 py-3 text-slate-600">${log.date}<\/td>
++          <td class="px-4 py-3 text-slate-600">${log.time}<\/td>
++          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)}<\/td>
++        <\/tr>
++      `;
++    });
++    
++    document.getElementById('emergency-modal').showModal();
++  }
++}
++</script>
+\ No newline at end of file

@@ -289,28 +289,46 @@ function initAppCore() {
   let currentStart = format(defaultStartDate);
   let currentEnd = format(today);
 
-  flatpickr('#date-range', {
-    mode: 'range',
-    locale: 'ko', // 한국어 로케일 지정 (index.html에 cdn 추가됨)
-    defaultDate: [currentStart, currentEnd],
+  let startFp = flatpickr('#start-date', {
+    locale: 'ko',
+    defaultDate: currentStart,
     minDate: maxLimitDate,
     maxDate: today,
     dateFormat: "Y-m-d",
     onChange: function(selectedDates, dateStr, instance) {
-      if (selectedDates.length === 1) {
-        // 시작일이 선택되면, 최대 15일 범위 내로 선택 가능하도록 잠금 설정
+      if (selectedDates.length > 0) {
         const start = selectedDates[0];
         const maxLimit = new Date(start);
         maxLimit.setDate(maxLimit.getDate() + 14);
-        const minLimit = new Date(start);
-        minLimit.setDate(minLimit.getDate() - 14);
-
-        instance.set('maxDate', maxLimit < today ? maxLimit : today);
-        instance.set('minDate', minLimit > maxLimitDate ? minLimit : maxLimitDate);
+        
+        // 종료일의 최소 날짜는 시작일, 최대 날짜는 15일 이내
+        endFp.set('minDate', start);
+        endFp.set('maxDate', maxLimit < today ? maxLimit : today);
       } else {
-        // 선택이 완료되거나 취소되면 다시 기본 15일 제한으로 복구
-        instance.set('maxDate', today);
-        instance.set('minDate', maxLimitDate);
+        endFp.set('minDate', maxLimitDate);
+        endFp.set('maxDate', today);
+      }
+    }
+  });
+
+  let endFp = flatpickr('#end-date', {
+    locale: 'ko',
+    defaultDate: currentEnd,
+    minDate: currentStart, // 초기 로딩시에는 기본 시작일이 minDate
+    maxDate: today,
+    dateFormat: "Y-m-d",
+    onChange: function(selectedDates, dateStr, instance) {
+      if (selectedDates.length > 0) {
+        const end = selectedDates[0];
+        const minLimit = new Date(end);
+        minLimit.setDate(minLimit.getDate() - 14);
+        
+        // 시작일의 최대 날짜는 종료일, 최소 날짜는 15일 이내
+        startFp.set('maxDate', end);
+        startFp.set('minDate', minLimit > maxLimitDate ? minLimit : maxLimitDate);
+      } else {
+        startFp.set('maxDate', today);
+        startFp.set('minDate', maxLimitDate);
       }
     }
   });
@@ -318,14 +336,19 @@ function initAppCore() {
   const searchBtn = document.getElementById('btn-search-date');
   if (searchBtn) {
     searchBtn.addEventListener('click', async () => {
-      const fp = document.querySelector('#date-range')?._flatpickr;
-      if (fp && fp.selectedDates.length === 2) {
-        const sDate = fp.selectedDates[0];
-        const eDate = fp.selectedDates[1];
-        const diffDays = Math.ceil(Math.abs(eDate - sDate) / (1000 * 60 * 60 * 24));
+      const sFp = document.querySelector('#start-date')?._flatpickr;
+      const eFp = document.querySelector('#end-date')?._flatpickr;
+      if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+        const sDate = sFp.selectedDates[0];
+        const eDate = eFp.selectedDates[0];
+        const diffDays = Math.ceil((eDate - sDate) / (1000 * 60 * 60 * 24));
         
         if (diffDays > 14) {
           if (window.showToast) window.showToast("조회 기간은 최대 15일 이내로 선택해주세요.", true);
+          return;
+        }
+        if (diffDays < 0) {
+          if (window.showToast) window.showToast("종료일이 시작일보다 앞설 수 없습니다.", true);
           return;
         }
 
@@ -333,8 +356,8 @@ function initAppCore() {
         if (resetBtn) resetBtn.classList.remove('hidden');
         
         document.getElementById('loading-indicator').classList.remove('hidden');
-        const s = format(fp.selectedDates[0]);
-        const e = format(fp.selectedDates[1]);
+        const s = format(sFp.selectedDates[0]);
+        const e = format(eFp.selectedDates[0]);
         const d = await fetchWeatherData(s, e);
         if (d) renderCards(d, window.getPeriodText(s, e));
       } else {
@@ -402,8 +425,10 @@ function initAppCore() {
       const s = format(dynamicStartDate);
       const e = format(nowToday);
       
-      const fp = document.querySelector('#date-range')?._flatpickr;
-      if (fp) fp.setDate([s, e], false);
+      const sFp = document.querySelector('#start-date')?._flatpickr;
+      const eFp = document.querySelector('#end-date')?._flatpickr;
+      if (sFp) sFp.setDate(s, false);
+      if (eFp) eFp.setDate(e, false);
       
       document.getElementById('loading-indicator').classList.remove('hidden');
       const d = await fetchWeatherData(s, e, true);
@@ -417,12 +442,13 @@ function initAppCore() {
   // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
   setInterval(async () => {
     console.log('[Auto-Refresh] Fetching latest weather data...');
-    const fp = document.querySelector('#date-range')?._flatpickr;
+    const sFp = document.querySelector('#start-date')?._flatpickr;
+    const eFp = document.querySelector('#end-date')?._flatpickr;
     let s, e;
     
-    if (isUserCustomDate && fp && fp.selectedDates.length === 2) {
-      s = format(fp.selectedDates[0]);
-      e = format(fp.selectedDates[1]);
+    if (isUserCustomDate && sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+      s = format(sFp.selectedDates[0]);
+      e = format(eFp.selectedDates[0]);
     } else {
       const nowToday = new Date();
       const dynamicStartDate = new Date(nowToday);
@@ -431,7 +457,8 @@ function initAppCore() {
       s = format(dynamicStartDate);
       e = format(nowToday);
       
-      if (fp) fp.setDate([s, e], false);
+      if (sFp) sFp.setDate(s, false);
+      if (eFp) eFp.setDate(e, false);
     }
     
     document.getElementById('loading-indicator').classList.remove('hidden');
@@ -473,7 +500,8 @@ window.openSubRegionModal = function(cityName) {
   loadingEl.classList.remove('hidden');
   modal.showModal();
   
-  const fp = document.querySelector('#date-range')?._flatpickr;
+  const sFp = document.querySelector('#start-date')?._flatpickr;
+  const eFp = document.querySelector('#end-date')?._flatpickr;
   const today = new Date();
   const format = d => {
      const offset = d.getTimezoneOffset() * 60000;
@@ -483,9 +511,9 @@ window.openSubRegionModal = function(cityName) {
   let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
   let e = format(today);
   
-  if (fp && fp.selectedDates.length === 2) {
-    s = format(fp.selectedDates[0]);
-    e = format(fp.selectedDates[1]);
+  if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+    s = format(sFp.selectedDates[0]);
+    e = format(eFp.selectedDates[0]);
   }
   
   google.script.run
@@ -509,7 +537,7 @@ window.openSubRegionModal = function(cityName) {
               <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}</h4>
               <div class="space-y-2">
                 <div class="flex justify-between items-center text-sm">
-                  <span class="text-slate-500">${window.getPeriodText(s, e)} 강수량</span>
+                  <span class="text-slate-500">${window.getPeriodText(s, e)} 누적</span>
                   <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
                 </div>
                 <div class="flex justify-between items-center text-sm">
@@ -590,7 +618,8 @@ window.showMapModal = function(name, lat, lon) {
   `;
 
   // 날짜 계산 (선택 기간 강수량 필터용)
-  const fp = document.querySelector('#date-range')?._flatpickr;
+  const sFp = document.querySelector('#start-date')?._flatpickr;
+  const eFp = document.querySelector('#end-date')?._flatpickr;
   const today = new Date();
   const format = d => {
      const offset = d.getTimezoneOffset() * 60000;
@@ -600,9 +629,9 @@ window.showMapModal = function(name, lat, lon) {
   let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
   let e = format(today);
   
-  if (fp && fp.selectedDates.length === 2) {
-    s = format(fp.selectedDates[0]);
-    e = format(fp.selectedDates[1]);
+  if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+    s = format(sFp.selectedDates[0]);
+    e = format(eFp.selectedDates[0]);
   }
 
   // 6. 서버로 전 지점 데이터 요청

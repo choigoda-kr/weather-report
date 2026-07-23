@@ -107,14 +107,25 @@
       </h1>
 
       <div class="flex items-center gap-2 w-full sm:w-auto justify-end md:justify-center shrink-0">
-        <label for="date-range"
-          class="font-medium text-[#1D1D1F] md:text-slate-300 text-sm hidden sm:block whitespace-nowrap">📅 조회
-          기간:</label>
-        <div class="relative w-full sm:w-64">
-          <input type="text" id="date-range"
-            class="bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 text-[#1D1D1F] md:text-white rounded-lg px-3 py-2 pl-9 focus:outline-none focus:ring-2 focus:ring-blue-500 md:focus:border-blue-500 w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal transition-all shadow-inner"
-            placeholder="날짜 선택...">
-          <i class="fa-regular fa-calendar absolute left-3 top-2.5 text-blue-500 md:text-slate-400"></i>
+        <style>
+          .date-hover { transition: all 0.2s ease; }
+          @media (min-width: 768px) { .date-hover:hover { background-color: rgba(255, 255, 255, 0.1) !important; color: #ffffff !important; } }
+          @media (max-width: 767px) { .date-hover:hover { background-color: rgba(0, 0, 0, 0.05) !important; color: #2563eb !important; } }
+        </style>
+        <div class="flex items-center gap-1.5 w-full sm:w-auto">
+          <div class="flex items-center bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 rounded-lg py-1.5 focus-within:ring-2 focus-within:ring-blue-500 md:focus-within:border-blue-500 transition-all shadow-sm gap-2" style="width: 144px; padding-left: 12px; padding-right: 8px;">
+            <span class="text-white shadow-sm text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 border-none" style="background: linear-gradient(to right, #2563eb, #4f46e5);">시작</span>
+            <input type="text" id="start-date"
+              class="bg-transparent text-[#1D1D1F] md:text-slate-200 focus:outline-none w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal text-center py-0.5 px-1 cursor-pointer date-hover rounded"
+              placeholder="">
+          </div>
+          <span class="text-slate-400 font-medium">~</span>
+          <div class="flex items-center bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 rounded-lg py-1.5 focus-within:ring-2 focus-within:ring-blue-500 md:focus-within:border-blue-500 transition-all shadow-sm gap-2" style="width: 144px; padding-left: 12px; padding-right: 8px;">
+            <span class="text-white shadow-sm text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 border-none" style="background: linear-gradient(to right, #2563eb, #4f46e5);">종료</span>
+            <input type="text" id="end-date"
+              class="bg-transparent text-[#1D1D1F] md:text-slate-200 focus:outline-none w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal text-center py-0.5 px-1 cursor-pointer date-hover rounded"
+              placeholder="">
+          </div>
         </div>
         <button id="btn-search-date"
           class="bg-[#003366] hover:bg-[#002244] md:bg-blue-600 md:hover:bg-blue-500 transition-colors text-white px-3 py-2 rounded-lg shadow-sm text-sm whitespace-nowrap border border-transparent font-medium">
@@ -433,27 +444,10 @@
     }
   </style>
   <div id="toast-container" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
-  <!-- 비동기 동적 스크립트 로더 (파싱 에러 원천 차단) -->
-  <script>
-    // 로딩 인디케이터 활성화 (선택 사항이나 기본적으로 화면에 보임)
-    console.log("Requesting JS modules asynchronously...");
-
-    google.script.run.withSuccessHandler(function (pureJsCode) {
-      console.log("JS modules received. Injecting into DOM...");
-      try {
-        var script = document.createElement('script');
-        script.innerHTML = pureJsCode;
-        document.head.appendChild(script);
-      } catch (err) {
-        var loader = document.getElementById('loading-indicator');
-        if (loader) loader.classList.add('hidden');
-        alert("스크립트 실행 오류: " + err.message);
-      }
-    }).withFailureHandler(function (error) {
-      console.error("Failed to load JS modules: ", error);
-      alert("스크립트 로딩 중 오류가 발생했습니다. 새로고침 해주세요.");
-    }).getJSCode();
-  </script>
+  <!-- 동기식 스크립트 로드 -->
+  <?!= include('JS_Data'); ?>
+  <?!= include('JS_Logic'); ?>
+  <?!= include('JS_UI'); ?>
 </body>
 
 </html>

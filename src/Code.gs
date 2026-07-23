@@ -1078,10 +1078,35 @@ function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateS
     const sDateObj = filterStart ? fastFormatDate(filterStart, "yyyy-MM-dd") : null;
     const eDateObj = filterEnd ? fastFormatDate(filterEnd, "yyyy-MM-dd") : null;
     
-    // 6. 결과 조립
+    // --- 6. 결과 조립 (최적화: Map 인덱싱) ---
+    const pastMap = {};
+    for (let i = 1; i < pastCache.data.length; i++) {
+        const row = pastCache.data[i];
+        const key = row[0] + '|' + row[1];
+        if (!pastMap[key]) pastMap[key] = [];
+        pastMap[key].push(row);
+    }
+    
+    const fcstMap = {};
+    for (let i = 1; i < fcstCache.data.length; i++) {
+        const row = fcstCache.data[i];
+        const key = row[0] + '|' + row[1];
+        if (!fcstMap[key]) fcstMap[key] = [];
+        fcstMap[key].push(row);
+    }
+    
+    const midMap = {};
+    for (let i = 1; i < midCache.data.length; i++) {
+        const row = midCache.data[i];
+        const key = row[0] + '|' + row[1];
+        if (!midMap[key]) midMap[key] = [];
+        midMap[key].push(row);
+    }
+    
     const mergedResults = lats.map((lat, index) => {
         const city = cities[index];
         const matchName = matchNames[index];
+        const cacheKey = city + '|' + matchName;
         
         let alertStatus = '없음';
         let tmEf = '';
@@ -1097,25 +1122,24 @@ function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateS
         const historyHourly = {};
         let historyTotal = 0;
         
-        for (let i = 1; i < pastCache.data.length; i++) {
-            const row = pastCache.data[i];
-            if (row[0] === city && row[1] === matchName) {
-                let dtStr = row[3]; // "YYYY-MM-DD HH:00"
-                if (dtStr instanceof Date) {
-                    dtStr = fastFormatDate(dtStr, "yyyy-MM-dd HH:00");
-                } else {
-                    dtStr = dtStr.toString();
-                }
-                const pcp = parseFloat(row[4]) || 0;
-                
-                const dKey = dtStr.split(' ')[0].split('T')[0]; // "YYYY-MM-DD"
-                if (sDateObj && eDateObj) {
-                    if (dKey >= sDateObj && dKey <= eDateObj) {
-                        historyTotal += pcp;
-                        if(!historyDaily[dKey]) historyDaily[dKey] = 0;
-                        historyDaily[dKey] += pcp;
-                        historyHourly[dtStr.replace(' ', 'T')] = pcp;
-                    }
+        const pastRows = pastMap[cacheKey] || [];
+        for (let i = 0; i < pastRows.length; i++) {
+            const row = pastRows[i];
+            let dtStr = row[3]; // "YYYY-MM-DD HH:00"
+            if (dtStr instanceof Date) {
+                dtStr = fastFormatDate(dtStr, "yyyy-MM-dd HH:00");
+            } else {
+                dtStr = dtStr.toString();
+            }
+            const pcp = parseFloat(row[4]) || 0;
+            
+            const dKey = dtStr.split(' ')[0].split('T')[0]; // "YYYY-MM-DD"
+            if (sDateObj && eDateObj) {
+                if (dKey >= sDateObj && dKey <= eDateObj) {
+                    historyTotal += pcp;
+                    if(!historyDaily[dKey]) historyDaily[dKey] = 0;
+                    historyDaily[dKey] += pcp;
+                    historyHourly[dtStr.replace(' ', 'T')] = pcp;
                 }
             }
         }
@@ -1125,38 +1149,36 @@ function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateS
         const hourlyPrecips = hourlyTimes.map(t => parseFloat(historyHourly[t].toFixed(1)));
 
         const fcst24hObj = {};
-        for (let i = 1; i < fcstCache.data.length; i++) {
-            const row = fcstCache.data[i];
-            if (row[0] === city && row[1] === matchName) {
-                let dtStr = row[2]; // "YYYYMMDDHH00"
-                if (dtStr instanceof Date) {
-                    dtStr = fastFormatDate(dtStr, "yyyyMMddHH00");
-                } else {
-                    dtStr = dtStr.toString();
-                }
-                const pcp = row[3];
-                fcst24hObj[dtStr] = pcp;
+        const fcstRows = fcstMap[cacheKey] || [];
+        for (let i = 0; i < fcstRows.length; i++) {
+            const row = fcstRows[i];
+            let dtStr = row[2]; // "YYYYMMDDHH00"
+            if (dtStr instanceof Date) {
+                dtStr = fastFormatDate(dtStr, "yyyyMMddHH00");
+            } else {
+                dtStr = dtStr.toString();
             }
+            const pcp = row[3];
+            fcst24hObj[dtStr] = pcp;
         }
         
         const midHourlyObj = {};
         const midDailyMap = {};
-        for (let i = 1; i < midCache.data.length; i++) {
-            const row = midCache.data[i];
-            if (row[0] === city && row[1] === matchName) {
-                let dtStr = row[2]; // "YYYY-MM-DDTHH:00"
-                if (dtStr instanceof Date) {
-                    dtStr = fastFormatDate(dtStr, "yyyy-MM-dd'T'HH:00");
-                } else {
-                    dtStr = dtStr.toString();
-                }
-                const pcp = parseFloat(row[3]) || 0;
-                midHourlyObj[dtStr] = pcp;
-                
-                const dKey = dtStr.split('T')[0].split(' ')[0];
-                if(!midDailyMap[dKey]) midDailyMap[dKey] = 0;
-                midDailyMap[dKey] += pcp;
+        const midRows = midMap[cacheKey] || [];
+        for (let i = 0; i < midRows.length; i++) {
+            const row = midRows[i];
+            let dtStr = row[2]; // "YYYY-MM-DDTHH:00"
+            if (dtStr instanceof Date) {
+                dtStr = fastFormatDate(dtStr, "yyyy-MM-dd'T'HH:00");
+            } else {
+                dtStr = dtStr.toString();
             }
+            const pcp = parseFloat(row[3]) || 0;
+            midHourlyObj[dtStr] = pcp;
+            
+            const dKey = dtStr.split('T')[0].split(' ')[0];
+            if(!midDailyMap[dKey]) midDailyMap[dKey] = 0;
+            midDailyMap[dKey] += pcp;
         }
         const midDailyObj = { time: [], precipitation_sum: [] };
         const sortedMidDaily = Object.keys(midDailyMap).sort();
@@ -1241,17 +1263,6 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function getJSCode() {
-  var data = HtmlService.createHtmlOutputFromFile('JS_Data').getContent();
-  var logic = HtmlService.createHtmlOutputFromFile('JS_Logic').getContent();
-  var ui = HtmlService.createHtmlOutputFromFile('JS_UI').getContent();
-  
-  // <script> 와 </script> 껍데기를 모두 벗겨내고 순수 자바스크립트 텍스트만 합쳐서 반환
-  var regex = /<script\b[^>]*>|<\/script>/gi;
-  var pureJs = data.replace(regex, '') + '\n' + logic.replace(regex, '') + '\n' + ui.replace(regex, '');
-  
-  return pureJs;
-}
 
 /**
  * 24시간 예상 강수량(동네예보) 구글 시트 캐싱 배치 함수 (3시간 트리거용)
@@ -1627,52 +1638,73 @@ function _getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
   const nowMs = Date.now();
   const next24hMs = nowMs + (24 * 60 * 60 * 1000);
   
+  // --- 최적화: Map 인덱싱 ---
+  const pastMap = {};
+  pastData.forEach(row => {
+    if (row[0] === cityName) {
+      if (!pastMap[row[1]]) pastMap[row[1]] = [];
+      pastMap[row[1]].push(row);
+    }
+  });
+
+  const fcstMap = {};
+  fcstData.forEach(row => {
+    if (row[0] === cityName) {
+      if (!fcstMap[row[1]]) fcstMap[row[1]] = [];
+      fcstMap[row[1]].push(row);
+    }
+  });
+
+  const midMap = {};
+  midData.forEach(row => {
+    if (row[0] === cityName) {
+      if (!midMap[row[1]]) midMap[row[1]] = [];
+      midMap[row[1]].push(row);
+    }
+  });
+
   const results = targetStns.map(stn => {
     let historyTotal = 0;
     let next24hSum = 0;
     let next10dSum = 0;
     
-
-  // 1. 과거 강수량 계산 (날짜 형식: YYYY-MM-DD 또는 Date 객체)
-    pastData.forEach(row => {
-      if (row[0] === cityName && row[1] === stn) {
-        let dtStr = row[3];
-        if (dtStr instanceof Date) {
-          dtStr = dtStr.getFullYear() + '-' + pad(dtStr.getMonth() + 1) + '-' + pad(dtStr.getDate());
-        } else {
-          dtStr = dtStr.toString().split(' ')[0].split('T')[0];
-        }
-        const pcp = parseFloat(row[4]) || 0;
-        
-        if (sDateObj && eDateObj) {
-          if (dtStr >= sDateObj && dtStr <= eDateObj) {
-            historyTotal += pcp;
-          }
+    // 1. 과거 강수량 계산 (날짜 형식: YYYY-MM-DD 또는 Date 객체)
+    const pastRows = pastMap[stn] || [];
+    pastRows.forEach(row => {
+      let dtStr = row[3];
+      if (dtStr instanceof Date) {
+        dtStr = dtStr.getFullYear() + '-' + pad(dtStr.getMonth() + 1) + '-' + pad(dtStr.getDate());
+      } else {
+        dtStr = dtStr.toString().split(' ')[0].split('T')[0];
+      }
+      const pcp = parseFloat(row[4]) || 0;
+      
+      if (sDateObj && eDateObj) {
+        if (dtStr >= sDateObj && dtStr <= eDateObj) {
+          historyTotal += pcp;
         }
       }
     });
     
     // 2. 24시간 예상강수량 계산 (날짜 형식: YYYY-MM-DD HH:00 또는 Date 객체)
-    fcstData.forEach(row => {
-      if (row[0] === cityName && row[1] === stn) {
-        let dtStr = row[2];
-        const timeMs = new Date(dtStr).getTime();
-        if (timeMs >= nowMs && timeMs <= next24hMs) {
-          const pcp = parseFloat(row[3]) || 0;
-          next24hSum += pcp;
-        }
+    const fcstRows = fcstMap[stn] || [];
+    fcstRows.forEach(row => {
+      let dtStr = row[2];
+      const timeMs = new Date(dtStr).getTime();
+      if (timeMs >= nowMs && timeMs <= next24hMs) {
+        const pcp = parseFloat(row[3]) || 0;
+        next24hSum += pcp;
       }
     });
     
     // 3. 중기예보(10일) 계산
-    midData.forEach(row => {
-      if (row[0] === cityName && row[1] === stn) {
-        let dtStr = row[2];
-        const timeMs = new Date(dtStr).getTime();
-        if (timeMs >= nowMs) { // 당일 + 3~10일
-          const pcp = parseFloat(row[3]) || 0;
-          next10dSum += pcp;
-        }
+    const midRows = midMap[stn] || [];
+    midRows.forEach(row => {
+      let dtStr = row[2];
+      const timeMs = new Date(dtStr).getTime();
+      if (timeMs >= nowMs) { // 당일 + 3~10일
+        const pcp = parseFloat(row[3]) || 0;
+        next10dSum += pcp;
       }
     });
     
