@@ -17,8 +17,9 @@ jobs:
       - name: Fetch latest merged weather data from GAS
         run: |
           mkdir -p data
-          curl -sf "https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec?action=latestJson" \
+          curl -sfL "https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec?action=latestJson" \
             -o data/weather-latest.json
+          node -e "JSON.parse(require('fs').readFileSync('data/weather-latest.json', 'utf8')).payload.length || process.exit(1)"
 
       - name: Commit and push if changed
         run: |
