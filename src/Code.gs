@@ -976,15 +976,64 @@ const KMA_AWS_STATIONS = {
  * @returns {string} - JSON 형태의 통합 기상 데이터 문자열
  */
 
+function getLiveAlerts() {
+  const cache = CacheService.getScriptCache();
+  const cachedStr = cache.get("LIVE_ALERTS_MAP");
+  if (cachedStr) {
+    return JSON.parse(cachedStr);
+  }
+  
+  const alertMap = {};
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('특보현황');
+    if (sheet) {
+      const values = sheet.getDataRange().getValues();
+      for (let i = 1; i < values.length; i++) {
+        const row = values[i];
+        if (row && row.length >= 5) {
+          alertMap[row[3]] = { tmEf: row[2] || '', alertStatus: row[4] || '없음' };
+        }
+      }
+    }
+  } catch (e) {
+    console.error('getLiveAlerts Error:', e);
+  }
+  
+  cache.put("LIVE_ALERTS_MAP", JSON.stringify(alertMap), 30);
+  return alertMap;
+}
+
 function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
     const cache = CacheService.getScriptCache();
     const cacheKey = "merged_" + Utilities.base64EncodeWebSafe(latStr + cityStr + startDateStr + endDateStr).substring(0, 200);
-    const cached = cache.get(cacheKey);
-    if (cached) return cached;
+    let resultStr = cache.get(cacheKey);
     
-    const result = _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr);
-    try { if (result && result.length > 10) cache.put(cacheKey, result, 600); } catch(e) {}
-    return result;
+    if (!resultStr) {
+        resultStr = _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr);
+        try { if (resultStr && resultStr.length > 10) cache.put(cacheKey, resultStr, 600); } catch(e) {}
+    }
+    
+    // 30초 초단기 캐시로 특보현황 실시간 덮어쓰기
+    try {
+        const data = JSON.parse(resultStr);
+        if (data && data.length > 0) {
+            const liveAlerts = getLiveAlerts();
+            const cities = cityStr.split(',');
+            data.forEach((d, idx) => {
+                const c = cities[idx];
+                if (liveAlerts[c]) {
+                    d.alertStatus = liveAlerts[c].alertStatus;
+                    d.tmEf = liveAlerts[c].tmEf;
+                }
+            });
+            resultStr = JSON.stringify(data);
+        }
+    } catch(e) {
+        console.error('getMergedWeatherData Alert Override Error:', e);
+    }
+    
+    return resultStr;
 }
 
 function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
@@ -1253,10 +1302,55 @@ function extractKmaFcst24h(data) {
 
 
 function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'latestJson') {
+    return ContentService.createTextOutput(getLatestJsonForDefaultView())
+        .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createTemplateFromFile('index').evaluate()
       .setTitle('경기 기상상황실')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * 프론트엔드 첫 화면 기본 조회기간(어제~오늘)에 해당하는 병합 데이터를 JSON으로 반환.
+ * GitHub Actions가 주기적으로 이 엔드포인트를 호출해 정적 JSON을 저장소에 커밋하는 데 사용.
+ */
+function getLatestJsonForDefaultView() {
+  const DEFAULT_LOCATIONS = [
+    { name: '인천', lat: 37.4777, lon: 126.6249 },
+    { name: '여주', lat: 37.2917, lon: 127.6372 },
+    { name: '이천', lat: 37.2640, lon: 127.4842 },
+    { name: '양평', lat: 37.4886, lon: 127.4944 },
+    { name: '화성', lat: 37.1651, lon: 126.8285 },
+    { name: '수원', lat: 37.2574, lon: 126.9830 },
+    { name: '연천', lat: 38.0964, lon: 127.0744 },
+    { name: '포천', lat: 37.8949, lon: 127.2003 },
+    { name: '파주', lat: 37.8859, lon: 126.7661 },
+    { name: '고양', lat: 37.6401, lon: 126.8322 },
+    { name: '강화', lat: 37.7074, lon: 126.4463 },
+    { name: '김포', lat: 37.6049, lon: 126.7151 },
+    { name: '평택', lat: 36.9926, lon: 127.1129 },
+    { name: '용인', lat: 37.2411, lon: 127.1774 },
+    { name: '안성', lat: 37.0116, lon: 127.2758 }
+  ];
+
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const pad = function(n) { return n < 10 ? '0' + n : n; };
+  const fmt = function(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+
+  const lats = DEFAULT_LOCATIONS.map(l => l.lat).join(',');
+  const lons = DEFAULT_LOCATIONS.map(l => l.lon).join(',');
+  const names = DEFAULT_LOCATIONS.map(l => l.name).join(',');
+
+  const payloadStr = getMergedWeatherData(lats, lons, names, names, fmt(yesterday), fmt(now));
+  const payload = JSON.parse(payloadStr);
+  const lastUpdated = (payload && payload[0] && payload[0].lastUpdated) || null;
+
+  return JSON.stringify({ payload: payload, lastUpdated: lastUpdated, generatedAt: now.toISOString() });
 }
 
 function include(filename) {
@@ -1725,12 +1819,34 @@ function _getSubRegionDataFromCache(cityName, startDateStr, endDateStr) {
 function getAllMapDataFromCache(startDateStr, endDateStr) {
   const cache = CacheService.getScriptCache();
   const cacheKey = "map_" + Utilities.base64EncodeWebSafe(startDateStr + endDateStr).substring(0, 200);
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  let resultStr = cache.get(cacheKey);
   
-  const result = _getAllMapDataFromCache(startDateStr, endDateStr);
-  try { if (result && result.length > 10) cache.put(cacheKey, result, 600); } catch(e) {}
-  return result;
+  if (!resultStr) {
+    resultStr = _getAllMapDataFromCache(startDateStr, endDateStr);
+    try { if (resultStr && resultStr.length > 10) cache.put(cacheKey, resultStr, 600); } catch(e) {}
+  }
+  
+  // 30초 초단기 캐시로 특보현황 실시간 덮어쓰기 (mapData는 기존에 alertStatus가 누락되었으므로 복구 효과 포함)
+  try {
+    const data = JSON.parse(resultStr);
+    if (data && data.length > 0) {
+      const liveAlerts = getLiveAlerts();
+      data.forEach(d => {
+        if (liveAlerts[d.name]) {
+          d.alertStatus = liveAlerts[d.name].alertStatus;
+          d.tmEf = liveAlerts[d.name].tmEf;
+        } else {
+          d.alertStatus = '없음';
+          d.tmEf = '';
+        }
+      });
+      resultStr = JSON.stringify(data);
+    }
+  } catch(e) {
+    console.error('getAllMapDataFromCache Alert Override Error:', e);
+  }
+  
+  return resultStr;
 }
 
 function _getAllMapDataFromCache(startDateStr, endDateStr) {
