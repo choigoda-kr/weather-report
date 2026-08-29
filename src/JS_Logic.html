@@ -82,33 +82,6 @@ window.getPeriodText = function(sDateStr, eDateStr) {
   }
 };
 
-// 현재 조회기간이 첫 화면 기본값(어제~오늘)과 일치하는지 판별
-function isDefaultDateRange(startDateStr, endDateStr) {
-  const fmt = d => {
-    const offset = d.getTimezoneOffset() * 60000;
-    return (new Date(d - offset)).toISOString().split('T')[0];
-  };
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  return startDateStr === fmt(yesterday) && endDateStr === fmt(today);
-}
-
-// GitHub Actions가 주기적으로 커밋해둔 사전 계산 JSON을 가져온다. 실패 시 null 반환.
-const GITHUB_PRECOMPUTED_JSON_URL = 'https://raw.githubusercontent.com/choigoda-kr/weather-report/main/data/weather-latest.json';
-async function fetchPrecomputedWeatherJson() {
-  const resp = await fetch(GITHUB_PRECOMPUTED_JSON_URL, { cache: 'no-store' });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  if (!data || !data.payload || !data.generatedAt) return null;
-
-  // 15분 이상 지난 스냅샷은 신뢰하지 않고 GAS 실시간 방식으로 폴백
-  const ageMs = Date.now() - new Date(data.generatedAt).getTime();
-  if (ageMs > 15 * 60 * 1000) return null;
-
-  return data;
-}
-
 // 2. Fetch 및 Mapping 로직 구조화
 async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
   const CACHE_TTL = 5 * 60 * 1000; // 5분 TTL
@@ -142,56 +115,37 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     const locNamesStr = locations.map(l => l.name).join(',');
     // 관측소 이름 매칭용 (옹진은 '백령도'로 매칭)
     const matchNamesStr = locations.map(l => l.name === '옹진' ? '백령도' : l.name).join(',');
-
+    
+    console.log('Fetching Hybrid Data via GAS Backend...');
     let results;
     let serverLastUpdated = null;
-    let usedStaticSource = false;
+    
+    // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
+    if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
+    }
+    
+    const responseObj = await new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler((res) => {
+                try {
+                    resolve(JSON.parse(res));
+                } catch(e) { reject(e); }
+            })
+            .withFailureHandler(reject)
+            .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
+    });
 
-    // 기본 조회기간(어제~오늘)이고 강제새로고침이 아닐 경우, GAS 왕복 대신
-    // GitHub Actions가 미리 계산해 커밋해둔 정적 JSON을 우선 시도 (첫 화면 로딩 속도 개선)
-    if (!isTestMode && !forceRefresh && isDefaultDateRange(startDateStr, endDateStr)) {
-      try {
-        const staticData = await fetchPrecomputedWeatherJson();
-        if (staticData) {
-          results = staticData.payload;
-          serverLastUpdated = staticData.lastUpdated;
-          usedStaticSource = true;
+    if (responseObj && responseObj.payload) {
+        results = responseObj.payload;
+        serverLastUpdated = responseObj.lastUpdated;
+    } else {
+        results = responseObj;
+        if (results && results.length > 0 && results[0].lastUpdated) {
+            serverLastUpdated = results[0].lastUpdated;
         }
-      } catch (e) {
-        console.warn('사전 계산 JSON 로드 실패, GAS 방식으로 폴백:', e);
-      }
     }
-
-    if (!usedStaticSource) {
-      console.log('Fetching Hybrid Data via GAS Backend...');
-
-      // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
-      if (typeof google === 'undefined' || typeof google.script === 'undefined') {
-          throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
-      }
-
-      const responseObj = await new Promise((resolve, reject) => {
-          google.script.run
-              .withSuccessHandler((res) => {
-                  try {
-                      resolve(JSON.parse(res));
-                  } catch(e) { reject(e); }
-              })
-              .withFailureHandler(reject)
-              .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
-      });
-
-      if (responseObj && responseObj.payload) {
-          results = responseObj.payload;
-          serverLastUpdated = responseObj.lastUpdated;
-      } else {
-          results = responseObj;
-          if (results && results.length > 0 && results[0].lastUpdated) {
-              serverLastUpdated = results[0].lastUpdated;
-          }
-      }
-    }
-
+    
     updateLastTimeString(serverLastUpdated);
 
     // 기상청 특보 기준 판별 (단일 레벨 반환)
