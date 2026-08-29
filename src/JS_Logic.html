@@ -136,59 +136,62 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
   // 로딩 상태 시작
   document.getElementById('loading-indicator').classList.remove('hidden');
 
-  // 기본 조회기간(어제~오늘)이고 강제새로고침이 아닐 경우, GAS 왕복 대신
-  // GitHub Actions가 미리 계산해 커밋해둔 정적 JSON을 우선 시도 (첫 화면 로딩 속도 개선)
-  if (!isTestMode && !forceRefresh && isDefaultDateRange(startDateStr, endDateStr)) {
-    try {
-      const staticData = await fetchPrecomputedWeatherJson();
-      if (staticData) {
-        try { sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), payload: staticData.payload, lastUpdated: staticData.lastUpdated })); } catch (e) {}
-        updateLastTimeString(staticData.lastUpdated);
-        document.getElementById('loading-indicator').classList.add('hidden');
-        return staticData.payload;
-      }
-    } catch (e) {
-      console.warn('사전 계산 JSON 로드 실패, GAS 방식으로 폴백:', e);
-    }
-  }
-
   try {
     const lats = locations.map(l => l.lat).join(',');
     const lons = locations.map(l => l.lon).join(',');
     const locNamesStr = locations.map(l => l.name).join(',');
     // 관측소 이름 매칭용 (옹진은 '백령도'로 매칭)
     const matchNamesStr = locations.map(l => l.name === '옹진' ? '백령도' : l.name).join(',');
-    
-    console.log('Fetching Hybrid Data via GAS Backend...');
+
     let results;
     let serverLastUpdated = null;
-    
-    // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
-    if (typeof google === 'undefined' || typeof google.script === 'undefined') {
-        throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
-    }
-    
-    const responseObj = await new Promise((resolve, reject) => {
-        google.script.run
-            .withSuccessHandler((res) => {
-                try {
-                    resolve(JSON.parse(res));
-                } catch(e) { reject(e); }
-            })
-            .withFailureHandler(reject)
-            .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
-    });
+    let usedStaticSource = false;
 
-    if (responseObj && responseObj.payload) {
-        results = responseObj.payload;
-        serverLastUpdated = responseObj.lastUpdated;
-    } else {
-        results = responseObj;
-        if (results && results.length > 0 && results[0].lastUpdated) {
-            serverLastUpdated = results[0].lastUpdated;
+    // 기본 조회기간(어제~오늘)이고 강제새로고침이 아닐 경우, GAS 왕복 대신
+    // GitHub Actions가 미리 계산해 커밋해둔 정적 JSON을 우선 시도 (첫 화면 로딩 속도 개선)
+    if (!isTestMode && !forceRefresh && isDefaultDateRange(startDateStr, endDateStr)) {
+      try {
+        const staticData = await fetchPrecomputedWeatherJson();
+        if (staticData) {
+          results = staticData.payload;
+          serverLastUpdated = staticData.lastUpdated;
+          usedStaticSource = true;
         }
+      } catch (e) {
+        console.warn('사전 계산 JSON 로드 실패, GAS 방식으로 폴백:', e);
+      }
     }
-    
+
+    if (!usedStaticSource) {
+      console.log('Fetching Hybrid Data via GAS Backend...');
+
+      // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
+      if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+          throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
+      }
+
+      const responseObj = await new Promise((resolve, reject) => {
+          google.script.run
+              .withSuccessHandler((res) => {
+                  try {
+                      resolve(JSON.parse(res));
+                  } catch(e) { reject(e); }
+              })
+              .withFailureHandler(reject)
+              .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
+      });
+
+      if (responseObj && responseObj.payload) {
+          results = responseObj.payload;
+          serverLastUpdated = responseObj.lastUpdated;
+      } else {
+          results = responseObj;
+          if (results && results.length > 0 && results[0].lastUpdated) {
+              serverLastUpdated = results[0].lastUpdated;
+          }
+      }
+    }
+
     updateLastTimeString(serverLastUpdated);
 
     // 기상청 특보 기준 판별 (단일 레벨 반환)
