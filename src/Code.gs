@@ -1250,6 +1250,13 @@ function _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateS
             matchName: matchName,
             isStale: isStale,
             lastUpdated: `과거:${pastCache.lastUpdated} | 예상:${fcstCache.lastUpdated} | 중기:${midCache.lastUpdated}`,
+            // 화면이 "가장 오래된 갱신 시각"을 고를 수 있도록 캐시별 상태를 함께 전달한다.
+            // 기존 lastUpdated 문자열은 호환을 위해 그대로 둔다.
+            lastUpdatedDetail: {
+                past: { label: '과거강수량', time: pastCache.lastUpdated, stale: pastCache.stale },
+                fcst: { label: '예상강수량', time: fcstCache.lastUpdated, stale: fcstCache.stale },
+                mid:  { label: '중기예보',   time: midCache.lastUpdated,  stale: midCache.stale  }
+            },
             current: {
                 temp: temp !== undefined ? temp : 0,
                 precip: precip,
@@ -1468,7 +1475,9 @@ function updateForecastPrecipitationCache() {
     // 마지막 갱신 시각 기록
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    // 밀리초 제거: 점(.)은 반드시 이스케이프해야 한다.
+    // \. 없이 /..+/ 를 쓰면 "아무 글자 + 1자 이상"이 되어 문자열 전체가 지워진다.
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/\..+/, '');
     sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
 
         Logger.log(`예상강수량 적재 완료. 총 ${sheetData.length}행 저장.`);
@@ -1582,7 +1591,9 @@ function updatePastPrecipitationCache() {
     // 마지막 갱신 시각 기록
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    // 밀리초 제거: 점(.)은 반드시 이스케이프해야 한다.
+    // \. 없이 /..+/ 를 쓰면 "아무 글자 + 1자 이상"이 되어 문자열 전체가 지워진다.
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/\..+/, '');
     sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
 
     }
@@ -1675,7 +1686,9 @@ function updateOpenMeteoCache() {
     // 마지막 갱신 시각 기록
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/..+/, '');
+    // 밀리초 제거: 점(.)은 반드시 이스케이프해야 한다.
+    // \. 없이 /..+/ 를 쓰면 "아무 글자 + 1자 이상"이 되어 문자열 전체가 지워진다.
+    const localISOTime = (new Date(now - tzOffset)).toISOString().replace(/T/, ' ').replace(/\..+/, '');
     sheet.getRange('F1').setValue('[마지막 갱신 시각: ' + localISOTime + ']');
 
         Logger.log("구글 시트 적재 완료. 총 " + (sheetData.length - 1) + "행 저장.");

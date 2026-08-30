@@ -100,7 +100,7 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     const data = JSON.parse(cached);
     if (Date.now() - data.timestamp < CACHE_TTL) {
       console.log('Using cached data for', startDateStr, 'to', endDateStr);
-      updateLastTimeString(data.lastUpdated);
+      updateLastTimeString(data.lastUpdated, data.lastUpdatedDetail);
       document.getElementById('loading-indicator').classList.add('hidden');
       return data.payload;
     }
@@ -119,7 +119,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     console.log('Fetching Hybrid Data via GAS Backend...');
     let results;
     let serverLastUpdated = null;
-    
+    let serverLastUpdatedDetail = null;
+
     // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
     if (typeof google === 'undefined' || typeof google.script === 'undefined') {
         throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
@@ -145,8 +146,12 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
             serverLastUpdated = results[0].lastUpdated;
         }
     }
-    
-    updateLastTimeString(serverLastUpdated);
+    // 캐시별 갱신 시각 상세는 항상 payload 원소에 실려 온다.
+    if (results && results.length > 0 && results[0].lastUpdatedDetail) {
+        serverLastUpdatedDetail = results[0].lastUpdatedDetail;
+    }
+
+    updateLastTimeString(serverLastUpdated, serverLastUpdatedDetail);
 
     // 기상청 특보 기준 판별 (단일 레벨 반환)
     function getAlertLevel(precips) {
@@ -377,7 +382,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
       sessionStorage.setItem(cacheKey, JSON.stringify({
         timestamp: Date.now(),
         payload: processedData,
-        lastUpdated: serverLastUpdated
+        lastUpdated: serverLastUpdated,
+        lastUpdatedDetail: serverLastUpdatedDetail
       }));
     } catch (e) {
       console.warn('SessionStorage setItem failed', e);
@@ -403,7 +409,8 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     }
 
     document.getElementById('loading-indicator').classList.add('hidden');
-    updateLastTimeString();
+    // (제거) 여기서 인자 없이 다시 호출하면 위에서 넣은 서버 갱신 시각을
+    //        브라우저 자기 시계로 덮어써, 데이터가 멈춰도 항상 최신처럼 보였다.
 
     return processedData;
     
@@ -415,15 +422,53 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
   }
 }
 
-function updateLastTimeString(serverString) {
+// 'YYYY-MM-DD HH:MM:SS'(한국시각) 문자열을 Date 로 바꾼다. 형식이 아니면 null.
+function parseCacheTime(s) {
+  if (!s || typeof s !== 'string') return null;
+  const m = s.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const d = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * 최종 갱신 시각 표시 (A안)
+ *
+ * 세 캐시(과거강수량/예상강수량/중기예보) 중 "가장 오래된" 시각을 표시한다.
+ * 표시된 시각은 "이 시각 이후로는 화면의 모든 값이 최신"이라는 보증이 된다.
+ * 가장 최근 것을 쓰면 하나만 살아 있어도 나머지가 멈춘 사실이 가려지므로 쓰지 않는다.
+ *
+ * 값을 신뢰할 수 없으면 브라우저 시계를 대신 쓰지 않고 '확인 불가'로 알린다.
+ */
+function updateLastTimeString(serverString, detail) {
   let timeStr = '';
-  if (serverString) {
+  const items = detail ? [detail.past, detail.fcst, detail.mid].filter(Boolean) : [];
+  const parsed = items.map(it => ({ item: it, date: parseCacheTime(it.time) }));
+  const valid = parsed.filter(p => p.date);
+
+  if (items.length > 0 && valid.length < items.length) {
+    // 시각을 읽을 수 없는 캐시가 있으면 대표값을 만들 수 없다.
+    // 이때 브라우저 시계를 보여주면 "최신"으로 오인하게 되므로 절대 그러지 않는다.
+    const unknown = parsed.filter(p => !p.date).map(p => p.item.label);
+    timeStr = `최종 갱신: 확인 불가 (${unknown.join(', ')})`;
+  } else if (items.length > 0) {
+    // 가장 오래된 시각을 대표값으로 삼는다.
+    const oldest = valid.reduce((a, b) => (a.date <= b.date ? a : b));
+    timeStr = `최종 갱신: ${oldest.date.toLocaleTimeString('ko-KR')}`;
+
+    // 각 캐시는 유효기간이 다르므로(과거·예상 2시간, 중기 4시간) 서버 판정을 그대로 쓴다.
+    const delayed = items.filter(it => it.stale).map(it => it.label);
+    if (delayed.length > 0) {
+      timeStr += `  ⚠ ${delayed.join(', ')} 지연`;
+    }
+  } else if (serverString && /\d/.test(serverString)) {
+    // 상세 정보가 없는 옛 응답(구버전 세션 캐시 등) 대비. 숫자가 하나도 없으면
+    // '과거: | 예상: | 중기:' 같은 빈 문자열이므로 그대로 노출하지 않는다.
     timeStr = `최종 갱신: ${serverString}`;
   } else {
-    const now = new Date();
-    timeStr = `최종 갱신: ${now.toLocaleTimeString('ko-KR')}`;
+    timeStr = '최종 갱신: 확인 불가';
   }
-  
+
   // 1. 메인 화면 갱신
   document.getElementById('last-updated').innerText = timeStr;
   
