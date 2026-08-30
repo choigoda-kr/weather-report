@@ -1,49 +1,2660 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec">
-    <title>경기지역본부 기상상황실</title>
-    <script>
-        // 접속 시 바로 GAS 실서버 주소로 자동 리다이렉트
-        window.location.replace("https://script.google.com/macros/s/AKfycbxRG65-0mK7IZE_n9j8zjl2xxDE2VpuUbGUkDEeQrdhpfG6aPKgYHtSEeWSD02CL1Z7/exec");
-    </script>
-    <style>
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            background-color: #0f172a; /* GAS 대시보드 배경색과 유사하게 설정 */
-            color: #94a3b8;
-            font-family: 'Noto Sans KR', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(59, 130, 246, 0.3);
-            border-radius: 50%;
-            border-top-color: #3b82f6;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="loading-container">
-        <div class="spinner"></div>
-        <p>기상상황실 실서버로 이동 중입니다...</p>
+  <meta charset="UTF-8">
+  <!-- 첫 로딩 가속: 외부 도메인 연결 예열 -->
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" crossorigin>
+  <script>
+    // 데이터 요청을 가장 먼저 시작해 자산 다운로드와 겹치게 한다.
+    // 어댑터가 이 진행 중인 요청을 그대로 재사용한다.
+    window.__SNAPSHOT_URL__ = "https://storage.googleapis.com/weather-report-507023-data/weather-latest.json";
+    try {
+      window.__SNAPSHOT_PREFETCH__ = fetch(window.__SNAPSHOT_URL__, { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+      window.__SNAPSHOT_PREFETCH__.catch(function () {});
+    } catch (e) {
+      window.__SNAPSHOT_PREFETCH__ = null;
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>경기지역본부 기상상황실</title>
+  <!-- GAS 리다이렉트 제거됨: 이 정적 페이지가 최종 목적지이므로 불필요 -->
+  <script>
+    // 전역 에러 핸들러 추가
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      var loader = document.getElementById('loading-indicator');
+      if (loader) loader.classList.add('hidden');
+      alert("시스템 스크립트 오류가 발생했습니다.\n" + msg);
+      return false;
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- Leaflet.js (지도 연동) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- 데이터 출처 안내 모달 팝업 -->
+  <dialog id="data-source-modal"
+    class="bg-transparent m-auto inset-0 z-[9999] backdrop:bg-black/50 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div
+      class="bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] md:shadow-2xl w-full max-w-4xl overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div
+        class="p-4 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 class="text-lg font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <i class="fa-solid fa-database text-indigo-500"></i> 데이터 출처 및 활용 현황
+        </h3>
+        <button id="data-source-modal-close-btn"
+          class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-4 sm:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left text-slate-700 md:text-slate-300 whitespace-nowrap min-w-[700px]">
+            <thead class="text-xs text-slate-500 md:text-slate-400 bg-[#F5F5F7] md:bg-slate-900/50 uppercase">
+              <tr>
+                <th scope="col" class="px-4 py-3 rounded-tl-lg">데이터 분류</th>
+                <th scope="col" class="px-4 py-3">화면 표시 항목</th>
+                <th scope="col" class="px-4 py-3">활용 중인 데이터 소스</th>
+                <th scope="col" class="px-4 py-3 rounded-tr-lg">적용 방식 및 활용 목적</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E5E5E5] md:divide-slate-700/50">
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">선택기간강수량</td>
+                <td class="px-4 py-3">선택 기간 누적 강수량 및 날짜/시간별 상세 그래프</td>
+                <td class="px-4 py-3 font-medium text-emerald-600 md:text-emerald-400">기상청 API Hub (AWS)</td>
+                <td class="px-4 py-3 whitespace-normal"><span
+                    class="font-bold text-emerald-600 md:text-emerald-400">[기상청 100%]</span> 무인기상관측 실측 장비의 강수량 데이터를 100%
+                  시각화</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">24시간 예상 강수량</td>
+                <td class="px-4 py-3">향후 24시간 예상 강수량</td>
+                <td class="px-4 py-3 font-medium text-sky-600 md:text-sky-400">기상청 (단기예보)</td>
+                <td class="px-4 py-3 whitespace-normal"><span class="font-bold text-sky-600 md:text-sky-400">[기상청
+                    100%]</span> 우리나라 지형에 최적화된 기상청 단기 예보 모델 데이터 활용</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">10일 예상 강수량</td>
+                <td class="px-4 py-3">향후 10일 예상 강수량</td>
+                <td class="px-4 py-3 font-medium text-amber-600 md:text-amber-400">Open-Meteo</td>
+                <td class="px-4 py-3 whitespace-normal"><span
+                    class="font-bold text-amber-600 md:text-amber-400">[Open-Meteo 100%]</span> 기상청 오픈 API 미제공으로 인해 글로벌
+                  모델 10일 치 데이터 활용</td>
+              </tr>
+              <tr class="hover:bg-slate-50 md:hover:bg-slate-800/80 transition-colors">
+                <td class="px-4 py-3 font-semibold text-[#1D1D1F] md:text-slate-200">세부지역강수량</td>
+                <td class="px-4 py-3">각 읍/면/동 강수량 추정치</td>
+                <td class="px-4 py-3 font-medium text-purple-600 md:text-purple-400">Open-Meteo</td>
+                <td class="px-4 py-3 whitespace-normal"><span
+                    class="font-bold text-purple-600 md:text-purple-400">[Open-Meteo 100%]</span> 관측소 미설치 동네의 위경도 좌표 기반
+                  모델 시뮬레이션 표출</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+  </dialog>
+
+  ﻿<style>
+*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.19 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.\!container{width:100%!important}.container{width:100%}@media (min-width:640px){.\!container{max-width:640px!important}.container{max-width:640px}}@media (min-width:768px){.\!container{max-width:768px!important}.container{max-width:768px}}@media (min-width:1024px){.\!container{max-width:1024px!important}.container{max-width:1024px}}@media (min-width:1280px){.\!container{max-width:1280px!important}.container{max-width:1280px}}@media (min-width:1536px){.\!container{max-width:1536px!important}.container{max-width:1536px}}.pointer-events-none{pointer-events:none}.invisible{visibility:hidden}.collapse{visibility:collapse}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0}.-bottom-1{bottom:-.25rem}.-left-3{left:-.75rem}.-right-2{right:-.5rem}.-right-3{right:-.75rem}.-right-6{right:-1.5rem}.-top-2{top:-.5rem}.-top-3{top:-.75rem}.-top-6{top:-1.5rem}.bottom-0{bottom:0}.bottom-5{bottom:1.25rem}.left-0{left:0}.left-1\/2{left:50%}.left-3{left:.75rem}.right-0{right:0}.right-5{right:1.25rem}.top-0{top:0}.top-2{top:.5rem}.top-2\.5{top:.625rem}.top-full{top:100%}.z-10{z-index:10}.z-20{z-index:20}.z-50{z-index:50}.z-\[1000\]{z-index:1000}.z-\[1500\]{z-index:1500}.z-\[2000\]{z-index:2000}.z-\[9999\]{z-index:9999}.col-span-full{grid-column:1/-1}.m-0{margin:0}.m-auto{margin:auto}.-mx-1{margin-left:-.25rem;margin-right:-.25rem}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-2{margin-left:.5rem;margin-right:.5rem}.mx-4{margin-left:1rem;margin-right:1rem}.mx-8{margin-left:2rem;margin-right:2rem}.mb-0{margin-bottom:0}.mb-0\.5{margin-bottom:.125rem}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-0{margin-left:0}.ml-0\.5{margin-left:.125rem}.ml-1{margin-left:.25rem}.ml-1\.5{margin-left:.375rem}.ml-2{margin-left:.5rem}.ml-4{margin-left:1rem}.ml-auto{margin-left:auto}.mr-2{margin-right:.5rem}.mr-3{margin-right:.75rem}.mt-0{margin-top:0}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-4{margin-top:1rem}.mt-auto{margin-top:auto}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-12{height:3rem}.h-14{height:3.5rem}.h-24{height:6rem}.h-4{height:1rem}.h-6{height:1.5rem}.h-8{height:2rem}.h-9{height:2.25rem}.h-auto{height:auto}.h-full{height:100%}.h-screen{height:100vh}.max-h-\[50vh\]{max-height:50vh}.max-h-\[70vh\]{max-height:70vh}.max-h-\[90vh\]{max-height:90vh}.max-h-none{max-height:none}.min-h-\[12\.5rem\]{min-height:12.5rem}.min-h-fit{min-height:-moz-fit-content;min-height:fit-content}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-14{width:3.5rem}.w-16{width:4rem}.w-24{width:6rem}.w-4{width:1rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-full{width:100%}.w-max{width:-moz-max-content;width:max-content}.w-screen{width:100vw}.min-w-\[36px\]{min-width:36px}.min-w-\[700px\]{min-width:700px}.max-w-4xl{max-width:56rem}.max-w-5xl{max-width:64rem}.max-w-lg{max-width:32rem}.max-w-md{max-width:28rem}.max-w-none{max-width:none}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink-0,.shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.-translate-x-1\/2{--tw-translate-x:-50%}.-translate-x-1\/2,.translate-y-2{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-y-2{--tw-translate-y:0.5rem}.translate-y-4{--tw-translate-y:1rem}.transform,.translate-y-4{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.animate-\[modalScale_0\.2s_ease-out\]{animation:modalScale .2s ease-out}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}.cursor-grab{cursor:grab}.cursor-help{cursor:help}.cursor-pointer{cursor:pointer}.select-none{-webkit-user-select:none;-moz-user-select:none;user-select:none}.snap-x{scroll-snap-type:x var(--tw-scroll-snap-strictness)}.snap-center{scroll-snap-align:center}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-end{align-items:flex-end}.items-center{align-items:center}.items-baseline{align-items:baseline}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-1\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.375rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.375rem*var(--tw-space-y-reverse))}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.divide-y>:not([hidden])~:not([hidden]){--tw-divide-y-reverse:0;border-top-width:calc(1px*(1 - var(--tw-divide-y-reverse)));border-bottom-width:calc(1px*var(--tw-divide-y-reverse))}.divide-\[\#E5E5E5\]>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(229 229 229/var(--tw-divide-opacity,1))}.divide-slate-700>:not([hidden])~:not([hidden]){--tw-divide-opacity:1;border-color:rgb(51 65 85/var(--tw-divide-opacity,1))}.overflow-hidden{overflow:hidden}.overflow-visible{overflow:visible}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.whitespace-normal{white-space:normal}.whitespace-nowrap{white-space:nowrap}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-sm{border-radius:.125rem}.rounded-xl{border-radius:.75rem}.rounded-t-sm{border-top-left-radius:.125rem;border-top-right-radius:.125rem}.rounded-br-lg{border-bottom-right-radius:.5rem}.rounded-tl-lg{border-top-left-radius:.5rem}.rounded-tr-lg{border-top-right-radius:.5rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-none{border-style:none}.border-\[\#E5E5E5\]{--tw-border-opacity:1;border-color:rgb(229 229 229/var(--tw-border-opacity,1))}.border-\[\#EEEEEE\]{--tw-border-opacity:1;border-color:rgb(238 238 238/var(--tw-border-opacity,1))}.border-\[\#F0F0F0\]{--tw-border-opacity:1;border-color:rgb(240 240 240/var(--tw-border-opacity,1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254/var(--tw-border-opacity,1))}.border-blue-300{--tw-border-opacity:1;border-color:rgb(147 197 253/var(--tw-border-opacity,1))}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.border-blue-500\/50{border-color:rgba(59,130,246,.5)}.border-blue-600{--tw-border-opacity:1;border-color:rgb(37 99 235/var(--tw-border-opacity,1))}.border-emerald-500{--tw-border-opacity:1;border-color:rgb(16 185 129/var(--tw-border-opacity,1))}.border-emerald-500\/50{border-color:rgba(16,185,129,.5)}.border-emerald-600{--tw-border-opacity:1;border-color:rgb(5 150 105/var(--tw-border-opacity,1))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity,1))}.border-green-500{--tw-border-opacity:1;border-color:rgb(34 197 94/var(--tw-border-opacity,1))}.border-green-500\/50{border-color:rgba(34,197,94,.5)}.border-orange-200{--tw-border-opacity:1;border-color:rgb(254 215 170/var(--tw-border-opacity,1))}.border-orange-300{--tw-border-opacity:1;border-color:rgb(253 186 116/var(--tw-border-opacity,1))}.border-orange-300\/50{border-color:hsla(31,97%,72%,.5)}.border-orange-500{--tw-border-opacity:1;border-color:rgb(249 115 22/var(--tw-border-opacity,1))}.border-red-200{--tw-border-opacity:1;border-color:rgb(254 202 202/var(--tw-border-opacity,1))}.border-red-300{--tw-border-opacity:1;border-color:rgb(252 165 165/var(--tw-border-opacity,1))}.border-red-300\/50{border-color:hsla(0,94%,82%,.5)}.border-red-400{--tw-border-opacity:1;border-color:rgb(248 113 113/var(--tw-border-opacity,1))}.border-red-500{--tw-border-opacity:1;border-color:rgb(239 68 68/var(--tw-border-opacity,1))}.border-red-500\/50{border-color:rgba(239,68,68,.5)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85/var(--tw-border-opacity,1))}.border-slate-700\/50{border-color:rgba(51,65,85,.5)}.border-teal-600{--tw-border-opacity:1;border-color:rgb(13 148 136/var(--tw-border-opacity,1))}.border-transparent{border-color:transparent}.border-white{--tw-border-opacity:1;border-color:rgb(255 255 255/var(--tw-border-opacity,1))}.border-white\/10{border-color:hsla(0,0%,100%,.1)}.border-white\/20{border-color:hsla(0,0%,100%,.2)}.bg-\[\#003366\]{--tw-bg-opacity:1;background-color:rgb(0 51 102/var(--tw-bg-opacity,1))}.bg-\[\#F5F5F7\]{--tw-bg-opacity:1;background-color:rgb(245 245 247/var(--tw-bg-opacity,1))}.bg-\[\#F8F8F8\]{--tw-bg-opacity:1;background-color:rgb(248 248 248/var(--tw-bg-opacity,1))}.bg-\[\#FBFBFB\]{--tw-bg-opacity:1;background-color:rgb(251 251 251/var(--tw-bg-opacity,1))}.bg-\[\#c81e1e\]{--tw-bg-opacity:1;background-color:rgb(200 30 30/var(--tw-bg-opacity,1))}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36/var(--tw-bg-opacity,1))}.bg-black{--tw-bg-opacity:1;background-color:rgb(0 0 0/var(--tw-bg-opacity,1))}.bg-black\/55{background-color:rgba(0,0,0,.55)}.bg-black\/80{background-color:rgba(0,0,0,.8)}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.bg-blue-400{--tw-bg-opacity:1;background-color:rgb(96 165 250/var(--tw-bg-opacity,1))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-blue-900{--tw-bg-opacity:1;background-color:rgb(30 58 138/var(--tw-bg-opacity,1))}.bg-current{background-color:currentColor}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-orange-100{--tw-bg-opacity:1;background-color:rgb(255 237 213/var(--tw-bg-opacity,1))}.bg-orange-500{--tw-bg-opacity:1;background-color:rgb(249 115 22/var(--tw-bg-opacity,1))}.bg-red-100{--tw-bg-opacity:1;background-color:rgb(254 226 226/var(--tw-bg-opacity,1))}.bg-red-50{--tw-bg-opacity:1;background-color:rgb(254 242 242/var(--tw-bg-opacity,1))}.bg-red-500{--tw-bg-opacity:1;background-color:rgb(239 68 68/var(--tw-bg-opacity,1))}.bg-red-600{--tw-bg-opacity:1;background-color:rgb(220 38 38/var(--tw-bg-opacity,1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.bg-slate-200{--tw-bg-opacity:1;background-color:rgb(226 232 240/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-800\/40{background-color:rgba(30,41,59,.4)}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.bg-teal-600{--tw-bg-opacity:1;background-color:rgb(13 148 136/var(--tw-bg-opacity,1))}.bg-transparent{background-color:transparent}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.bg-white\/90{background-color:hsla(0,0%,100%,.9)}.bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}.from-blue-400{--tw-gradient-from:#60a5fa var(--tw-gradient-from-position);--tw-gradient-to:rgba(96,165,250,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-orange-400{--tw-gradient-from:#fb923c var(--tw-gradient-from-position);--tw-gradient-to:rgba(251,146,60,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-red-400{--tw-gradient-from:#f87171 var(--tw-gradient-from-position);--tw-gradient-to:hsla(0,91%,71%,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-red-500{--tw-gradient-from:#ef4444 var(--tw-gradient-from-position);--tw-gradient-to:rgba(239,68,68,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.to-blue-600{--tw-gradient-to:#2563eb var(--tw-gradient-to-position)}.to-orange-600{--tw-gradient-to:#ea580c var(--tw-gradient-to-position)}.to-red-600{--tw-gradient-to:#dc2626 var(--tw-gradient-to-position)}.to-red-700{--tw-gradient-to:#b91c1c var(--tw-gradient-to-position)}.p-0{padding:0}.p-1{padding:.25rem}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.py-0{padding-top:0;padding-bottom:0}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-10{padding-top:2.5rem;padding-bottom:2.5rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-20{padding-top:5rem;padding-bottom:5rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.pb-0{padding-bottom:0}.pb-2{padding-bottom:.5rem}.pb-3{padding-bottom:.75rem}.pb-6{padding-bottom:1.5rem}.pl-9{padding-left:2.25rem}.pt-1{padding-top:.25rem}.pt-2{padding-top:.5rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.font-sans{font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[13px\]{font-size:13px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-normal{font-weight:400}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.tracking-\[-0\.1em\]{letter-spacing:-.1em}.tracking-tight{letter-spacing:-.025em}.tracking-tighter{letter-spacing:-.05em}.tracking-wide{letter-spacing:.025em}.text-\[\#003366\]{--tw-text-opacity:1;color:rgb(0 51 102/var(--tw-text-opacity,1))}.text-\[\#1D1D1F\]{--tw-text-opacity:1;color:rgb(29 29 31/var(--tw-text-opacity,1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6/var(--tw-text-opacity,1))}.text-blue-200{--tw-text-opacity:1;color:rgb(191 219 254/var(--tw-text-opacity,1))}.text-blue-400{--tw-text-opacity:1;color:rgb(96 165 250/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-500{--tw-text-opacity:1;color:rgb(16 185 129/var(--tw-text-opacity,1))}.text-emerald-600{--tw-text-opacity:1;color:rgb(5 150 105/var(--tw-text-opacity,1))}.text-green-500{--tw-text-opacity:1;color:rgb(34 197 94/var(--tw-text-opacity,1))}.text-indigo-500{--tw-text-opacity:1;color:rgb(99 102 241/var(--tw-text-opacity,1))}.text-indigo-600{--tw-text-opacity:1;color:rgb(79 70 229/var(--tw-text-opacity,1))}.text-orange-500{--tw-text-opacity:1;color:rgb(249 115 22/var(--tw-text-opacity,1))}.text-orange-700{--tw-text-opacity:1;color:rgb(194 65 12/var(--tw-text-opacity,1))}.text-purple-600{--tw-text-opacity:1;color:rgb(147 51 234/var(--tw-text-opacity,1))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity,1))}.text-red-500{--tw-text-opacity:1;color:rgb(239 68 68/var(--tw-text-opacity,1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity,1))}.text-red-700{--tw-text-opacity:1;color:rgb(185 28 28/var(--tw-text-opacity,1))}.text-sky-400{--tw-text-opacity:1;color:rgb(56 189 248/var(--tw-text-opacity,1))}.text-sky-500{--tw-text-opacity:1;color:rgb(14 165 233/var(--tw-text-opacity,1))}.text-sky-600{--tw-text-opacity:1;color:rgb(2 132 199/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-teal-400{--tw-text-opacity:1;color:rgb(45 212 191/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.text-white\/60{color:hsla(0,0%,100%,.6)}.text-white\/80{color:hsla(0,0%,100%,.8)}.text-yellow-400{--tw-text-opacity:1;color:rgb(250 204 21/var(--tw-text-opacity,1))}.text-yellow-500{--tw-text-opacity:1;color:rgb(234 179 8/var(--tw-text-opacity,1))}.opacity-0{opacity:0}.opacity-10{opacity:.1}.opacity-100{opacity:1}.opacity-20{opacity:.2}.opacity-50{opacity:.5}.opacity-80{opacity:.8}.shadow{--tw-shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color)}.shadow,.shadow-2xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-\[0_0_15px_rgba\(16\2c 185\2c 129\2c 0\.3\)\]{--tw-shadow:0 0 15px rgba(16,185,129,.3);--tw-shadow-colored:0 0 15px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_15px_rgba\(239\2c 68\2c 68\2c 0\.3\)\]{--tw-shadow:0 0 15px rgba(239,68,68,.3);--tw-shadow-colored:0 0 15px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_15px_rgba\(34\2c 197\2c 94\2c 0\.3\)\]{--tw-shadow:0 0 15px rgba(34,197,94,.3);--tw-shadow-colored:0 0 15px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_15px_rgba\(59\2c 130\2c 246\2c 0\.3\)\]{--tw-shadow:0 0 15px rgba(59,130,246,.3);--tw-shadow-colored:0 0 15px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_20px_rgba\(239\2c 68\2c 68\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(239,68,68,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_20px_rgba\(249\2c 115\2c 22\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(249,115,22,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_20px_rgba\(59\2c 130\2c 246\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(59,130,246,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_40px_rgba\(0\2c 0\2c 0\2c 0\.5\)\]{--tw-shadow:0 0 40px rgba(0,0,0,.5);--tw-shadow-colored:0 0 40px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_5px_rgba\(239\2c 68\2c 68\2c 0\.6\)\]{--tw-shadow:0 0 5px rgba(239,68,68,.6);--tw-shadow-colored:0 0 5px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_5px_rgba\(249\2c 115\2c 22\2c 0\.6\)\]{--tw-shadow:0 0 5px rgba(249,115,22,.6);--tw-shadow-colored:0 0 5px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_10px_40px_rgba\(0\2c 0\2c 0\2c 0\.1\)\]{--tw-shadow:0 10px 40px rgba(0,0,0,.1);--tw-shadow-colored:0 10px 40px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_10px_40px_rgba\(0\2c 0\2c 0\2c 0\.2\)\]{--tw-shadow:0 10px 40px rgba(0,0,0,.2);--tw-shadow-colored:0 10px 40px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_2px_10px_rgba\(0\2c 0\2c 0\2c 0\.03\)\]{--tw-shadow:0 2px 10px rgba(0,0,0,.03);--tw-shadow-colored:0 2px 10px var(--tw-shadow-color)}.shadow-\[0_2px_10px_rgba\(0\2c 0\2c 0\2c 0\.03\)\],.shadow-inner{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgba(0,0,0,.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color)}.shadow-lg,.shadow-sm{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-blue-500\/40{--tw-shadow-color:rgba(59,130,246,.4);--tw-shadow:var(--tw-shadow-colored)}.shadow-orange-500\/40{--tw-shadow-color:rgba(249,115,22,.4);--tw-shadow:var(--tw-shadow-colored)}.shadow-red-500\/50{--tw-shadow-color:rgba(239,68,68,.5);--tw-shadow:var(--tw-shadow-colored)}.blur{--tw-blur:blur(8px)}.blur,.blur-2xl{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.blur-2xl{--tw-blur:blur(40px)}.drop-shadow{--tw-drop-shadow:drop-shadow(0 1px 2px rgba(0,0,0,.1)) drop-shadow(0 1px 1px rgba(0,0,0,.06))}.drop-shadow,.drop-shadow-\[0_0_10px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-\[0_0_10px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 10px rgba(16,185,129,.8))}.drop-shadow-\[0_0_10px_rgba\(34\2c 197\2c 94\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 10px rgba(34,197,94,.8))}.drop-shadow-\[0_0_10px_rgba\(34\2c 197\2c 94\2c 0\.8\)\],.drop-shadow-\[0_0_10px_rgba\(96\2c 165\2c 250\2c 0\.8\)\]{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-\[0_0_10px_rgba\(96\2c 165\2c 250\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 10px rgba(96,165,250,.8))}.drop-shadow-\[0_0_12px_rgba\(239\2c 68\2c 68\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 12px rgba(239,68,68,.8))}.drop-shadow-\[0_0_12px_rgba\(239\2c 68\2c 68\2c 0\.8\)\],.drop-shadow-\[0_0_3px_rgba\(239\2c 68\2c 68\2c 0\.8\)\]{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-\[0_0_3px_rgba\(239\2c 68\2c 68\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 3px rgba(239,68,68,.8))}.drop-shadow-\[0_0_3px_rgba\(249\2c 115\2c 22\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 3px rgba(249,115,22,.8))}.drop-shadow-\[0_0_3px_rgba\(249\2c 115\2c 22\2c 0\.8\)\],.drop-shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-\[0_0_8px_rgba\(16\2c 185\2c 129\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 8px rgba(16,185,129,.8))}.drop-shadow-\[0_0_8px_rgba\(239\2c 68\2c 68\2c 0\.9\)\]{--tw-drop-shadow:drop-shadow(0 0 8px rgba(239,68,68,.9))}.drop-shadow-\[0_0_8px_rgba\(239\2c 68\2c 68\2c 0\.9\)\],.drop-shadow-\[0_0_8px_rgba\(45\2c 212\2c 191\2c 0\.8\)\]{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-\[0_0_8px_rgba\(45\2c 212\2c 191\2c 0\.8\)\]{--tw-drop-shadow:drop-shadow(0 0 8px rgba(45,212,191,.8))}.drop-shadow-md{--tw-drop-shadow:drop-shadow(0 4px 3px rgba(0,0,0,.07)) drop-shadow(0 2px 2px rgba(0,0,0,.06))}.drop-shadow-md,.drop-shadow-sm{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-sm{--tw-drop-shadow:drop-shadow(0 1px 1px rgba(0,0,0,.05))}.backdrop-blur-md{--tw-backdrop-blur:blur(12px)}.backdrop-blur-md,.backdrop-blur-sm{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px)}.backdrop-blur-xl{--tw-backdrop-blur:blur(24px)}.backdrop-blur-xl,.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-200{transition-duration:.2s}.duration-300{transition-duration:.3s}.duration-500{transition-duration:.5s}.ease-out{transition-timing-function:cubic-bezier(0,0,.2,1)}.backdrop\:bg-black\/30::backdrop{background-color:rgba(0,0,0,.3)}.backdrop\:bg-black\/40::backdrop{background-color:rgba(0,0,0,.4)}.backdrop\:bg-black\/50::backdrop{background-color:rgba(0,0,0,.5)}.backdrop\:bg-black\/60::backdrop{background-color:rgba(0,0,0,.6)}.backdrop\:backdrop-blur-sm::backdrop{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.open\:flex[open]{display:flex}.open\:flex-col[open]{flex-direction:column}.hover\:-translate-y-1:hover{--tw-translate-y:-0.25rem;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:border-red-500:hover{--tw-border-opacity:1;border-color:rgb(239 68 68/var(--tw-border-opacity,1))}.hover\:bg-\[\#002244\]:hover{--tw-bg-opacity:1;background-color:rgb(0 34 68/var(--tw-bg-opacity,1))}.hover\:bg-\[\#EAEAEA\]:hover{--tw-bg-opacity:1;background-color:rgb(234 234 234/var(--tw-bg-opacity,1))}.hover\:bg-blue-100:hover{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-200:hover{--tw-bg-opacity:1;background-color:rgb(191 219 254/var(--tw-bg-opacity,1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.hover\:bg-red-100:hover{--tw-bg-opacity:1;background-color:rgb(254 226 226/var(--tw-bg-opacity,1))}.hover\:bg-red-500:hover{--tw-bg-opacity:1;background-color:rgb(239 68 68/var(--tw-bg-opacity,1))}.hover\:bg-red-700:hover{--tw-bg-opacity:1;background-color:rgb(185 28 28/var(--tw-bg-opacity,1))}.hover\:bg-slate-100:hover{--tw-bg-opacity:1;background-color:rgb(241 245 249/var(--tw-bg-opacity,1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252/var(--tw-bg-opacity,1))}.hover\:bg-slate-800:hover{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.hover\:bg-teal-700:hover{--tw-bg-opacity:1;background-color:rgb(15 118 110/var(--tw-bg-opacity,1))}.hover\:text-blue-500:hover{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.hover\:text-red-400:hover{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity,1))}.hover\:text-red-500:hover{--tw-text-opacity:1;color:rgb(239 68 68/var(--tw-text-opacity,1))}.hover\:text-red-600:hover{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.hover\:shadow-\[0_0_25px_rgba\(16\2c 185\2c 129\2c 0\.6\)\]:hover{--tw-shadow:0 0 25px rgba(16,185,129,.6);--tw-shadow-colored:0 0 25px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.hover\:shadow-\[0_0_25px_rgba\(239\2c 68\2c 68\2c 0\.6\)\]:hover{--tw-shadow:0 0 25px rgba(239,68,68,.6);--tw-shadow-colored:0 0 25px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.hover\:shadow-\[0_0_25px_rgba\(34\2c 197\2c 94\2c 0\.6\)\]:hover{--tw-shadow:0 0 25px rgba(34,197,94,.6);--tw-shadow-colored:0 0 25px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.hover\:shadow-\[0_0_25px_rgba\(59\2c 130\2c 246\2c 0\.6\)\]:hover{--tw-shadow:0 0 25px rgba(59,130,246,.6);--tw-shadow-colored:0 0 25px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.hover\:shadow-blue-500\/60:hover{--tw-shadow-color:rgba(59,130,246,.6);--tw-shadow:var(--tw-shadow-colored)}.hover\:shadow-orange-500\/60:hover{--tw-shadow-color:rgba(249,115,22,.6);--tw-shadow:var(--tw-shadow-colored)}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.focus\:ring-red-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(239 68 68/var(--tw-ring-opacity,1))}.active\:cursor-grabbing:active{cursor:grabbing}.group\/badge:hover .group-hover\/badge\:visible{visibility:visible}.group:hover .group-hover\:scale-110{--tw-scale-x:1.1;--tw-scale-y:1.1;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.group\/btn2:hover .group-hover\/btn2\:text-\[\#1D1D1F\]{--tw-text-opacity:1;color:rgb(29 29 31/var(--tw-text-opacity,1))}.group\/btn2:hover .group-hover\/btn2\:text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.group\/btn3:hover .group-hover\/btn3\:text-\[\#1D1D1F\]{--tw-text-opacity:1;color:rgb(29 29 31/var(--tw-text-opacity,1))}.group\/btn3:hover .group-hover\/btn3\:text-sky-500{--tw-text-opacity:1;color:rgb(14 165 233/var(--tw-text-opacity,1))}.group\/btn:hover .group-hover\/btn\:text-\[\#1D1D1F\]{--tw-text-opacity:1;color:rgb(29 29 31/var(--tw-text-opacity,1))}.group:hover .group-hover\:text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.group:hover .group-hover\:text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.group\/badge:hover .group-hover\/badge\:opacity-100,.group\/btn2:hover .group-hover\/btn2\:opacity-100,.group\/btn3:hover .group-hover\/btn3\:opacity-100,.group\/btn:hover .group-hover\/btn\:opacity-100{opacity:1}.group:hover .group-hover\:opacity-20{opacity:.2}@media (min-width:640px){.sm\:ml-0{margin-left:0}.sm\:mt-0{margin-top:0}.sm\:block{display:block}.sm\:inline{display:inline}.sm\:w-64{width:16rem}.sm\:w-auto{width:auto}.sm\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.sm\:flex-row{flex-direction:row}.sm\:items-end{align-items:flex-end}.sm\:gap-2{gap:.5rem}.sm\:gap-3{gap:.75rem}.sm\:gap-4{gap:1rem}.sm\:gap-5{gap:1.25rem}.sm\:p-1\.5{padding:.375rem}.sm\:p-3{padding:.75rem}.sm\:p-5{padding:1.25rem}.sm\:p-6{padding:1.5rem}.sm\:px-1\.5{padding-left:.375rem;padding-right:.375rem}.sm\:px-6{padding-left:1.5rem;padding-right:1.5rem}.sm\:py-1{padding-top:.25rem;padding-bottom:.25rem}.sm\:py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.sm\:text-2xl{font-size:1.5rem;line-height:2rem}.sm\:text-\[10px\]{font-size:10px}.sm\:text-base{font-size:1rem;line-height:1.5rem}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}.sm\:text-sm{font-size:.875rem;line-height:1.25rem}.sm\:text-xl{font-size:1.25rem;line-height:1.75rem}.sm\:tracking-normal{letter-spacing:0}}@media (min-width:768px){.md\:flex{display:flex}.md\:w-auto{width:auto}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:justify-end{justify-content:flex-end}.md\:justify-center{justify-content:center}.md\:gap-5{gap:1.25rem}.md\:divide-slate-700\/50>:not([hidden])~:not([hidden]){border-color:rgba(51,65,85,.5)}.md\:border{border-width:1px}.md\:border-blue-300\/80{border-color:rgba(147,197,253,.8)}.md\:border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.md\:border-blue-800{--tw-border-opacity:1;border-color:rgb(30 64 175/var(--tw-border-opacity,1))}.md\:border-orange-300\/80{border-color:hsla(31,97%,72%,.8)}.md\:border-orange-500{--tw-border-opacity:1;border-color:rgb(249 115 22/var(--tw-border-opacity,1))}.md\:border-red-400\/80{border-color:hsla(0,91%,71%,.8)}.md\:border-red-500{--tw-border-opacity:1;border-color:rgb(239 68 68/var(--tw-border-opacity,1))}.md\:border-slate-600{--tw-border-opacity:1;border-color:rgb(71 85 105/var(--tw-border-opacity,1))}.md\:border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85/var(--tw-border-opacity,1))}.md\:border-slate-700\/30{border-color:rgba(51,65,85,.3)}.md\:border-slate-700\/50{border-color:rgba(51,65,85,.5)}.md\:border-transparent{border-color:transparent}.md\:bg-black\/20{background-color:rgba(0,0,0,.2)}.md\:bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.md\:bg-blue-900\/30{background-color:rgba(30,58,138,.3)}.md\:bg-slate-700\/60{background-color:rgba(51,65,85,.6)}.md\:bg-slate-700\/80{background-color:rgba(51,65,85,.8)}.md\:bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.md\:bg-slate-800\/40{background-color:rgba(30,41,59,.4)}.md\:bg-slate-800\/50{background-color:rgba(30,41,59,.5)}.md\:bg-slate-800\/80{background-color:rgba(30,41,59,.8)}.md\:bg-slate-800\/90{background-color:rgba(30,41,59,.9)}.md\:bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.md\:bg-slate-900\/30{background-color:rgba(15,23,42,.3)}.md\:bg-slate-900\/50{background-color:rgba(15,23,42,.5)}.md\:bg-slate-900\/80{background-color:rgba(15,23,42,.8)}.md\:bg-transparent{background-color:transparent}.md\:p-8{padding:2rem}.md\:text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77/var(--tw-text-opacity,1))}.md\:text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.md\:text-blue-300{--tw-text-opacity:1;color:rgb(147 197 253/var(--tw-text-opacity,1))}.md\:text-blue-400{--tw-text-opacity:1;color:rgb(96 165 250/var(--tw-text-opacity,1))}.md\:text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.md\:text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.md\:text-purple-400{--tw-text-opacity:1;color:rgb(192 132 252/var(--tw-text-opacity,1))}.md\:text-sky-400{--tw-text-opacity:1;color:rgb(56 189 248/var(--tw-text-opacity,1))}.md\:text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249/var(--tw-text-opacity,1))}.md\:text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.md\:text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.md\:text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.md\:text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.md\:text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.md\:text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.md\:text-white\/90{color:hsla(0,0%,100%,.9)}.md\:text-yellow-300{--tw-text-opacity:1;color:rgb(253 224 71/var(--tw-text-opacity,1))}.md\:text-yellow-400{--tw-text-opacity:1;color:rgb(250 204 21/var(--tw-text-opacity,1))}.md\:text-yellow-500{--tw-text-opacity:1;color:rgb(234 179 8/var(--tw-text-opacity,1))}.md\:shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.md\:shadow-\[0_0_20px_rgba\(239\2c 68\2c 68\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(239,68,68,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.md\:shadow-\[0_0_20px_rgba\(249\2c 115\2c 22\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(249,115,22,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.md\:shadow-\[0_0_20px_rgba\(59\2c 130\2c 246\2c 0\.4\)\]{--tw-shadow:0 0 20px rgba(59,130,246,.4);--tw-shadow-colored:0 0 20px var(--tw-shadow-color)}.md\:shadow-\[0_0_20px_rgba\(59\2c 130\2c 246\2c 0\.4\)\],.md\:shadow-lg{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.md\:shadow-lg{--tw-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color),0 4px 6px -4px var(--tw-shadow-color)}.md\:shadow-none{--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.md\:drop-shadow{--tw-drop-shadow:drop-shadow(0 1px 2px rgba(0,0,0,.1)) drop-shadow(0 1px 1px rgba(0,0,0,.06))}.md\:drop-shadow,.md\:drop-shadow-lg{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.md\:drop-shadow-lg{--tw-drop-shadow:drop-shadow(0 10px 8px rgba(0,0,0,.04)) drop-shadow(0 4px 3px rgba(0,0,0,.1))}.md\:backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.md\:backdrop\:bg-slate-900\/80::backdrop{background-color:rgba(15,23,42,.8)}.md\:hover\:bg-blue-500:hover{--tw-bg-opacity:1;background-color:rgb(59 130 246/var(--tw-bg-opacity,1))}.md\:hover\:bg-blue-900\/50:hover{background-color:rgba(30,58,138,.5)}.md\:hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.md\:hover\:bg-slate-700\/30:hover{background-color:rgba(51,65,85,.3)}.md\:hover\:bg-slate-700\/70:hover{background-color:rgba(51,65,85,.7)}.md\:hover\:bg-slate-800\/60:hover{background-color:rgba(30,41,59,.6)}.md\:hover\:bg-slate-800\/80:hover{background-color:rgba(30,41,59,.8)}.md\:hover\:text-blue-400:hover{--tw-text-opacity:1;color:rgb(96 165 250/var(--tw-text-opacity,1))}.md\:hover\:text-red-400:hover{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity,1))}.md\:focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.group\/btn2:hover .md\:group-hover\/btn2\:text-amber-400\/70{color:rgba(251,191,36,.7)}.group\/btn2:hover .md\:group-hover\/btn2\:text-white,.group\/btn3:hover .md\:group-hover\/btn3\:text-white,.group\/btn:hover .md\:group-hover\/btn\:text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}}@media (min-width:1024px){.lg\:flex{display:flex}.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\:grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}}@media (min-width:1280px){.xl\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+
+</head>
+
+<body class="bg-[#FBFBFB] md:bg-slate-900 text-[#1D1D1F] md:text-slate-100 font-sans min-h-screen">
+  <!-- 상단 통합 헤더 영역 -->
+  <header class="p-4 sm:p-6 pb-2">
+    <div
+      class="bg-white/90 md:bg-slate-800/90 md:backdrop-blur-md p-4 rounded-xl shadow-sm md:shadow-lg border border-[#E5E5E5] md:border-slate-700/50 flex flex-wrap items-center justify-between gap-4">
+      <h1
+        class="text-xl sm:text-2xl text-[#1D1D1F] md:text-white flex flex-col sm:flex-row sm:items-end gap-1 sm:gap-2">
+        <div class="flex items-center tracking-[-0.1em]">
+          <i class="fa-solid fa-cloud-sun-rain mr-3 text-blue-500 md:text-blue-400 text-xl sm:text-2xl"></i>
+          <span class="font-black text-[#1D1D1F] md:text-white">경기지역본부 기상상황실</span>
+        </div>
+      </h1>
+
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end md:justify-center shrink-0">
+        <style>
+          .date-hover { transition: all 0.2s ease; }
+          @media (min-width: 768px) { .date-hover:hover { background-color: rgba(255, 255, 255, 0.1) !important; color: #ffffff !important; } }
+          @media (max-width: 767px) { .date-hover:hover { background-color: rgba(0, 0, 0, 0.05) !important; color: #2563eb !important; } }
+        </style>
+        <div class="flex items-center gap-1.5 w-full sm:w-auto">
+          <div class="flex items-center bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 rounded-lg py-1.5 focus-within:ring-2 focus-within:ring-blue-500 md:focus-within:border-blue-500 transition-all shadow-sm gap-2" style="width: 144px; padding-left: 12px; padding-right: 8px;">
+            <span class="text-white shadow-sm text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 border-none" style="background: linear-gradient(to right, #2563eb, #4f46e5);">시작</span>
+            <input type="text" id="start-date"
+              class="bg-transparent text-[#1D1D1F] md:text-slate-200 focus:outline-none w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal text-center py-0.5 px-1 cursor-pointer date-hover rounded"
+              placeholder="">
+          </div>
+          <span class="text-slate-400 font-medium">~</span>
+          <div class="flex items-center bg-[#FBFBFB] md:bg-slate-900 border border-[#E5E5E5] md:border-slate-600 rounded-lg py-1.5 focus-within:ring-2 focus-within:ring-blue-500 md:focus-within:border-blue-500 transition-all shadow-sm gap-2" style="width: 144px; padding-left: 12px; padding-right: 8px;">
+            <span class="text-white shadow-sm text-[11px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 border-none" style="background: linear-gradient(to right, #2563eb, #4f46e5);">종료</span>
+            <input type="text" id="end-date"
+              class="bg-transparent text-[#1D1D1F] md:text-slate-200 focus:outline-none w-full text-[13px] sm:text-sm tracking-tighter sm:tracking-normal text-center py-0.5 px-1 cursor-pointer date-hover rounded"
+              placeholder="">
+          </div>
+        </div>
+        <button id="btn-search-date"
+          class="bg-[#003366] hover:bg-[#002244] md:bg-blue-600 md:hover:bg-blue-500 transition-colors text-white px-3 py-2 rounded-lg shadow-sm text-sm whitespace-nowrap border border-transparent font-medium">
+          조회
+        </button>
+        <button id="btn-auto-refresh-reset"
+          class="hidden text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1.5 rounded-lg transition-colors border border-blue-200 whitespace-nowrap shadow-sm">
+          <i class="fa-solid fa-rotate-right"></i> 실시간 복귀
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto justify-between md:justify-end">
+        <div class="flex items-center gap-2">
+          <div id="loading-indicator" class="flex items-center gap-2 text-blue-500 md:text-blue-400 font-medium text-sm">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <span class="hidden sm:inline">로딩중...</span>
+          </div>
+          <div id="last-updated"
+            class="text-xs text-slate-500 md:text-slate-400 font-mono bg-[#F5F5F7] md:bg-slate-900/50 px-3 py-1.5 rounded-full border border-[#E5E5E5] md:border-slate-700 whitespace-nowrap">
+            최종 갱신: -</div>
+        </div>
+        
+        <div class="flex items-center gap-2 ml-auto sm:ml-0">
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end mt-1 sm:mt-0">
+          <button id="btn-map-view"
+            class="bg-emerald-600 hover:bg-emerald-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-emerald-600 whitespace-nowrap">
+            <i class="fa-solid fa-map-location-dot"></i> <span class="text-xs sm:text-sm">MAP보기</span>
+          </button>
+
+          <button id="btn-reference-sites"
+            class="bg-teal-600 hover:bg-teal-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-teal-600 whitespace-nowrap">
+            <i class="fa-solid fa-link"></i> <span class="text-xs sm:text-sm">관련사이트</span>
+          </button>
+
+          <a href="https://choigoda-kr.github.io/gg-disaster-center/"
+            class="bg-blue-600 hover:bg-blue-700 transition-all text-white px-3 py-1.5 rounded shadow flex items-center gap-2 text-sm border border-blue-600 whitespace-nowrap flex">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> <span class="text-xs sm:text-sm">상황실로</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 상단 티커(Ticker) 영역 -->
+  <div id="weather-ticker-container" class="px-4 sm:px-6 pt-2 pb-0 hidden">
+    <div class="bg-[#F5F5F7] md:bg-slate-800/80 border border-[#E5E5E5] md:border-slate-700 rounded-lg shadow-sm overflow-hidden flex items-center h-12">
+      <div class="overflow-hidden relative w-full h-full flex items-center cursor-grab active:cursor-grabbing" id="weather-ticker-drag-area">
+        <div id="weather-ticker-content" class="ticker-content whitespace-nowrap text-sm sm:text-lg font-medium">
+          <!-- 텍스트 주입 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 5x3 Grid 영역 -->
+  <main class="p-4 sm:p-6 pt-2 flex-grow relative">
+    <!-- 정적 스켈레톤 UI (JS 실행 전 즉각 표출) -->
+    <div id="skeleton-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity duration-500 opacity-100 absolute inset-0 p-4 sm:p-6 pt-2 z-10 w-full">
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden md:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+      <div class="weather-card skeleton-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-auto min-h-[12.5rem] bg-white md:bg-slate-800/50 border border-[#EEEEEE] md:border-slate-700/30 hidden lg:flex">
+        <div class="flex justify-between"><div class="h-6 bg-slate-200 md:bg-slate-700/80 rounded w-16 mb-4"></div><div class="h-10 w-10 bg-slate-200 md:bg-slate-700/80 rounded-full"></div></div><div class="space-y-3 mt-auto"><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div><div class="h-14 bg-slate-100 md:bg-slate-700/60 rounded-lg w-full"></div></div>
+      </div>
+    </div>
+    <div id="weather-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 transition-opacity duration-500 opacity-0 relative z-20">
+      <!-- Cards will be dynamically inserted here -->
+    </div>
+  </main>
+
+  <!-- 데이터 모달 팝업 -->
+  <dialog id="detail-modal"
+    class="bg-transparent m-auto inset-0 z-50 backdrop:bg-black/30 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div
+      class="bg-white md:bg-slate-800 border-none md:border md:border-slate-700/50 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl w-full max-w-sm overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div
+        class="p-4 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-[#FBFBFB] md:bg-slate-800/50">
+        <h3 id="modal-title"
+          class="text-lg font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <div class="flex items-center gap-1">
+          <button onclick="toggleModalFullscreen()" id="modal-fs-btn"
+            class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-blue-500 md:hover:text-blue-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-expand" id="modal-fs-icon"></i>
+          </button>
+          <button onclick="document.getElementById('detail-modal').close()"
+            class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-slate-700 md:text-slate-300">
+          <thead class="text-xs text-slate-500 md:text-slate-400 bg-[#F5F5F7] md:bg-slate-900/50 uppercase">
+            <tr>
+              <th scope="col" class="px-4 py-3 rounded-tl-lg">날짜</th>
+              <th scope="col" class="px-4 py-3 text-right rounded-tr-lg">강수량 (mm)</th>
+            </tr>
+          </thead>
+          <tbody id="modal-tbody" class="divide-y divide-[#E5E5E5] md:divide-slate-700/50 flex-col">
+            <!-- Rows inject -->
+          </tbody>
+        </table>
+      </div>
+      <div
+        class="p-4 bg-[#F8F8F8] md:bg-slate-900/80 border-t border-[#E5E5E5] md:border-slate-700 flex justify-between items-center">
+        <div id="modal-data-source" class="text-xs text-slate-500"><i class="fa-solid fa-circle-info"></i> Open-Meteo
+        </div>
+        <div class="text-sm font-bold text-[#1D1D1F] md:text-slate-300">합계: <span id="modal-total"
+            class="text-lg text-[#003366] md:text-blue-400 ml-1">0.0</span> <span
+            class="text-[10px] text-slate-500 font-normal">mm</span></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 지도 모달 팝업 (전체화면 Full-Screen) -->
+  <dialog id="map-modal"
+    class="bg-transparent p-0 m-0 w-screen h-screen max-w-none max-h-none backdrop:bg-black/60 backdrop:backdrop-blur-sm">
+    <div class="map-modal-inner">
+      <!-- 오버레이 헤더 (지도 위에 float) -->
+      <div
+        class="absolute top-0 left-0 right-0 z-[1000] px-4 py-3 flex justify-between items-center bg-black/55 backdrop-blur-sm border-b border-white/10">
+        <h3 id="map-modal-title"
+          class="text-base font-bold text-white tracking-tight flex items-center gap-2 drop-shadow">
+          <i class="fa-solid fa-map-location-dot text-emerald-400"></i>
+          <span id="map-modal-title-text">관측 지점 위치</span>
+        </h3>
+        <button id="map-modal-close-btn" onclick="closeMapModal()"
+          class="text-white/80 hover:bg-red-500 hover:text-white transition-all w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border border-white/20 hover:border-red-500">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <!-- 지도 컨테이너 (전체 화면 채움) -->
+      <div id="map-container" class="w-full map-container-height"></div>
+      <!-- 오버레이 푸터 (지도 위에 float) -->
+      <div
+        class="absolute bottom-0 left-0 right-0 z-[1000] px-4 py-2 flex justify-between items-center bg-black/55 backdrop-blur-sm border-t border-white/10">
+        <div class="text-xs text-white/60 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> Google 위성지도
+        </div>
+        <div id="map-modal-info" class="text-xs text-white/80 font-mono"></div>
+      </div>
+    </div>
+  </dialog>
+  <!-- 긴급 호우 알림 모달 팝업 -->
+  <dialog id="emergency-modal"
+    class="bg-transparent m-auto inset-0 z-[2000] backdrop:bg-black/50 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div
+      class="bg-white border-2 border-red-500 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div class="p-4 border-b border-red-200 bg-red-50 flex justify-between items-center">
+        <h3 id="emergency-modal-title" class="text-lg font-bold text-red-600 tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('emergency-modal').close()"
+          class="text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-0 max-h-[50vh] overflow-y-auto custom-scrollbar">
+        <table class="w-full text-sm text-left text-slate-700">
+          <thead class="text-xs text-slate-500 bg-[#F5F5F7] uppercase sticky top-0 border-b border-[#E5E5E5] z-10">
+            <tr>
+              <th scope="col" class="px-4 py-3">지점명</th>
+              <th scope="col" class="px-4 py-3">예상 날짜</th>
+              <th scope="col" class="px-4 py-3">예상 시간</th>
+              <th scope="col" class="px-4 py-3 text-right">강수량 (mm/h)</th>
+            </tr>
+          </thead>
+          <tbody id="emergency-modal-tbody" class="divide-y divide-[#E5E5E5]">
+            <!-- Rows inject -->
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 bg-[#F8F8F8] border-t border-[#E5E5E5] flex justify-between items-center">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600 font-medium select-none">
+          <input type="checkbox" id="emergency-hide-today" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
+          오늘 하루 보지 않기 <span class="text-[10px] text-slate-400 font-normal ml-1 hidden sm:inline">(상황 변동 시 다시 알림)</span>
+        </label>
+        <button onclick="document.getElementById('emergency-modal').close()"
+          class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition-colors whitespace-nowrap">확인 <span id="emergency-modal-timer" class="ml-1 opacity-80">(10s)</span></button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 서브지역(읍면동) 모달 팝업 -->
+  <dialog id="sub-region-modal"
+    class="bg-transparent m-auto inset-0 z-[1500] backdrop:bg-black/40 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4 w-full h-full">
+    <div
+      class="bg-[#FBFBFB] md:bg-slate-800 border border-[#E5E5E5] md:border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div
+        class="p-4 sm:p-5 border-b border-[#E5E5E5] md:border-slate-700 flex justify-between items-center bg-white md:bg-slate-800/80">
+        <h3 id="sub-region-modal-title"
+          class="text-xl sm:text-2xl font-bold text-[#1D1D1F] md:text-white tracking-tight flex items-center gap-2">
+          <!-- Title inject -->
+        </h3>
+        <button onclick="document.getElementById('sub-region-modal').close()"
+          class="text-slate-400 hover:bg-slate-100 md:hover:bg-slate-700 hover:text-red-500 md:hover:text-red-400 transition-colors w-10 h-10 rounded-full flex items-center justify-center text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 bg-[#F5F5F7] md:bg-slate-900/30">
+        <div id="sub-region-loading"
+          class="flex flex-col items-center justify-center py-20 text-slate-400 gap-4 hidden">
+          <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+          <span class="font-medium">읍·면·동 세부 데이터를 불러오는 중입니다...</span>
+        </div>
+        <div id="sub-region-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+          <!-- Cards inject -->
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 관련사이트 모달 -->
+  <dialog id="reference-sites-modal"
+    class="bg-transparent m-auto inset-0 z-[9999] backdrop:bg-black/50 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
+    <div
+      class="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden animate-[modalScale_0.2s_ease-out]">
+      <div
+        class="p-5 border-b border-white/10 flex justify-between items-center">
+        <h3 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+          <i class="fa-solid fa-link text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.8)]"></i> 관련사이트
+        </h3>
+        <button id="reference-sites-modal-close-btn"
+          class="text-slate-300 hover:bg-slate-800 hover:text-red-400 transition-colors w-8 h-8 rounded-full flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <div class="p-6 md:p-8">
+        <div class="grid grid-cols-2 gap-4 md:gap-5">
+          <!-- 1. 네이버날씨 (Green Glow) -->
+          <a href="https://weather.naver.com/" target="_blank"
+            class="relative flex flex-col items-center justify-center p-5 bg-slate-800/40 backdrop-blur-md rounded-2xl border border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+            <div class="relative w-14 h-14 mb-3 flex items-center justify-center">
+              <span class="text-5xl font-black text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)] group-hover:scale-110 transition-transform duration-300">N</span>
+              <i class="fa-solid fa-cloud-sun absolute -top-2 -right-3 text-xl text-yellow-400 drop-shadow-md"></i>
+            </div>
+            <span class="font-bold text-white tracking-wide text-sm drop-shadow-md">네이버날씨</span>
+          </a>
+
+          <!-- 2. 네이버날씨지도 (Emerald Glow) -->
+          <a href="https://weather.naver.com/map/" target="_blank"
+            class="relative flex flex-col items-center justify-center p-5 bg-slate-800/40 backdrop-blur-md rounded-2xl border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.6)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+            <div class="relative w-14 h-14 mb-3 flex items-center justify-center gap-1 group-hover:scale-110 transition-transform duration-300">
+              <span class="text-4xl font-black text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]">N</span>
+              <i class="fa-solid fa-location-dot text-2xl text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]"></i>
+            </div>
+            <span class="font-bold text-white tracking-wide text-sm drop-shadow-md">네이버날씨지도</span>
+          </a>
+
+          <!-- 3. Windy (Real App Style - Red Glow) -->
+          <a href="https://www.windy.com/ko/-%EB%B9%84-%EB%B2%88%EA%B0%9C-rain?rain,2026-07-09-16,37.677,126.189,7" target="_blank"
+            class="relative flex flex-col items-center justify-center p-5 bg-slate-800/40 backdrop-blur-md rounded-2xl border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+            <div class="w-14 h-14 mb-3 flex items-center justify-center bg-[#c81e1e] rounded-full drop-shadow-[0_0_12px_rgba(239,68,68,0.8)] group-hover:scale-110 transition-transform duration-300">
+              <i class="fa-solid fa-wind text-3xl text-white"></i>
+            </div>
+            <span class="font-bold text-white tracking-wide text-sm drop-shadow-md">Windy</span>
+          </a>
+
+          <!-- 4. 특보현황 (Alert Style - Blue/Red Glow) -->
+          <a href="https://www.weather.go.kr/w/special-report/overall.do" target="_blank"
+            class="relative flex flex-col items-center justify-center p-5 bg-slate-800/40 backdrop-blur-md rounded-2xl border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.6)] hover:-translate-y-1 transition-all duration-300 group overflow-hidden">
+            <div class="relative w-14 h-14 mb-3 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <i class="fa-solid fa-cloud-bolt text-5xl text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]"></i>
+              <i class="fa-solid fa-triangle-exclamation absolute -bottom-1 -right-2 text-xl text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)]"></i>
+            </div>
+            <span class="font-bold text-white tracking-wide text-sm drop-shadow-md">특보현황</span>
+            <span class="text-blue-200 text-[10px] opacity-80 mt-1">(날씨누리)</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 데이터 출처 Footer -->
+  <footer class="text-center pb-6 pt-2 flex justify-center items-center gap-2">
+    <button id="btn-data-source"
+      class="bg-[#F5F5F7] hover:bg-[#EAEAEA] md:bg-slate-800 md:hover:bg-slate-700 transition-all text-slate-600 md:text-slate-300 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 text-xs border border-[#E5E5E5] md:border-slate-600">
+      <i class="fa-solid fa-circle-info text-indigo-500"></i> 데이터 출처: 기상청 / Open-Meteo
+    </button>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+  <style>
+    .shimmer-effect {
+      animation: shimmer 2s infinite linear;
+    }
+
+    @keyframes shimmer {
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    /* 지도 마커 커스텀 툴팁 Hover 로직 */
+    .custom-map-tooltip .tooltip-detail {
+      display: none;
+    }
+    .custom-map-tooltip:hover .tooltip-detail {
+      display: block;
+    }
+  </style>
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
+  <!-- 동기식 스크립트 로드 -->
+  <script>
+/**
+ * google.script.run 어댑터 (shim)
+ * ---------------------------------------------------------------
+ * 이 페이지는 더 이상 Google Apps Script가 서빙하지 않으므로
+ * google.script.run 이 존재하지 않는다.
+ *
+ * 원본 화면 코드(JS_Logic / JS_UI)를 한 글자도 수정하지 않기 위해,
+ * google.script.run 과 동일한 모양의 객체를 미리 만들어 둔다.
+ * 원본 코드는 자신이 GAS 안에서 동작한다고 인식한 채 그대로 실행된다.
+ *
+ * 원본이 응답을 JSON.parse(res) 로 처리하므로,
+ * 성공 핸들러에는 반드시 "문자열"을 넘겨야 한다.
+ *
+ * 데이터 경로
+ *   첫 화면(기본 기간)  : Cloud Storage 스냅샷 → 즉시 표시
+ *   그 외 실시간 조회    : Cloud Function 프록시 → GAS
+ */
+(function () {
+  'use strict';
+
+  // ===============================================================
+  // 전송 모드
+  //   local : dist/data 의 스냅샷 파일 (오프라인 확인용)
+  //   cloud : Google Cloud Storage + Cloud Function
+  // ===============================================================
+  var API_MODE = 'cloud';
+
+  var ENDPOINTS = {
+    local: {
+      snapshot: './data/weather-latest.json',
+      api: null
+    },
+    cloud: {
+      snapshot: 'https://storage.googleapis.com/weather-report-507023-data/weather-latest.json',
+      api: 'https://asia-northeast3-weather-report-507023.cloudfunctions.net/weather-proxy'
+    }
+  };
+
+  var cfg = ENDPOINTS[API_MODE];
+
+  // 스냅샷이 늦어질 때 화면이 멈추지 않도록 하는 제한 시간
+  var SNAPSHOT_TIMEOUT_MS = 3000;
+
+  // --- 유틸 ------------------------------------------------------
+
+  function toLocalDateStr(d) {
+    var offset = d.getTimezoneOffset() * 60000;
+    return new Date(d - offset).toISOString().split('T')[0];
+  }
+
+  // 스냅샷이 담고 있는 기간(어제~오늘). 서버의 생성 로직과 동일 기준.
+  function snapshotRange() {
+    var today = new Date();
+    var yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { start: toLocalDateStr(yesterday), end: toLocalDateStr(today) };
+  }
+
+  function fetchSnapshotFresh() {
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, SNAPSHOT_TIMEOUT_MS) : null;
+
+    var options = { cache: 'no-store' };
+    if (controller) options.signal = controller.signal;
+
+    return fetch(cfg.snapshot, options).then(function (res) {
+      if (timer) clearTimeout(timer);
+      if (!res.ok) throw new Error('스냅샷을 불러오지 못했습니다 (HTTP ' + res.status + ')');
+      return res.json();
+    }, function (err) {
+      if (timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  // <head>에서 미리 시작해 둔 요청이 있으면 첫 회에 한해 그것을 재사용한다.
+  // 자산 다운로드와 겹쳐 진행되므로 첫 화면 표시가 빨라진다.
+  var prefetchConsumed = false;
+  function loadSnapshot() {
+    if (API_MODE === 'cloud' && !prefetchConsumed && window.__SNAPSHOT_PREFETCH__) {
+      prefetchConsumed = true;
+      return window.__SNAPSHOT_PREFETCH__.catch(function (err) {
+        console.warn('[API 어댑터] 선행 요청 실패, 다시 조회합니다:', err.message);
+        return fetchSnapshotFresh();
+      });
+    }
+    return fetchSnapshotFresh();
+  }
+
+  function callApi(action, params) {
+    if (!cfg.api) {
+      return Promise.reject(new Error('실시간 조회 경로가 설정되지 않았습니다.'));
+    }
+    var qs = 'action=' + encodeURIComponent(action);
+    Object.keys(params).forEach(function (k) {
+      qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k] == null ? '' : params[k]);
+    });
+    return fetch(cfg.api + '?' + qs, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error('조회 실패 (HTTP ' + res.status + ')');
+      return res.text();   // 원본이 문자열을 기대한다
+    });
+  }
+
+  // --- 첫 화면 직후 실시간 갱신 -----------------------------------
+  //
+  // 특보(호우경보·주의보)는 시간이 생명이므로, 스냅샷으로 빠르게 그린 뒤
+  // 곧바로 실시간 값을 받아 화면을 갱신한다.
+  // 원본이 60초 주기로 수행하는 동작과 완전히 동일하며, 시점만 앞당긴 것이다.
+  // 원본 파일은 수정하지 않고, 원본이 노출한 전역 함수를 그대로 호출한다.
+
+  var firstPaintDone = false;
+  var liveRefreshQueued = false;
+
+  // 스냅샷은 "페이지를 막 열었을 때"에만 쓴다.
+  // 원본의 세션 캐시가 첫 화면을 대신 그리는 경우가 있어, 호출 순서만으로 판단하면
+  // 60초 뒤 자동갱신이 스냅샷을 받아 특보 반영이 늦어질 수 있다.
+  // 로드 직후 짧은 구간에서만 스냅샷을 허용해 그 문제를 막는다.
+  var PAGE_LOAD_TIME = Date.now();
+  var FIRST_PAINT_WINDOW_MS = 10000;
+
+  function isWithinFirstPaintWindow() {
+    return (Date.now() - PAGE_LOAD_TIME) < FIRST_PAINT_WINDOW_MS;
+  }
+
+  function scheduleImmediateLiveRefresh(startDateStr, endDateStr) {
+    if (liveRefreshQueued) return;
+    liveRefreshQueued = true;
+
+    setTimeout(function () {
+      if (typeof window.fetchWeatherData !== 'function' ||
+          typeof window.renderCards !== 'function') {
+        console.warn('[API 어댑터] 실시간 갱신을 건너뜁니다(원본 함수 없음).');
+        return;
+      }
+      window.fetchWeatherData(startDateStr, endDateStr, true).then(function (data) {
+        if (!data) return;
+        var periodText = (typeof window.getPeriodText === 'function')
+          ? window.getPeriodText(startDateStr, endDateStr) : '';
+        window.renderCards(data, periodText);
+        console.log('[API 어댑터] 실시간 갱신 완료 (특보 최신화)');
+      }).catch(function (err) {
+        console.warn('[API 어댑터] 실시간 갱신 실패:', err && err.message);
+      });
+    }, 0);
+  }
+
+  // --- 어댑터 본체 -----------------------------------------------
+
+  function createRunner(successFn, failureFn) {
+    function ok(value) {
+      Promise.resolve().then(function () {
+        if (typeof successFn === 'function') successFn(value);
+      });
+    }
+
+    function ng(err) {
+      var e = (err instanceof Error) ? err : new Error(String(err));
+      Promise.resolve().then(function () {
+        if (typeof failureFn === 'function') failureFn(e);
+        else console.error('[API 어댑터] 처리되지 않은 오류:', e);
+      });
+    }
+
+    return {
+      withSuccessHandler: function (fn) { return createRunner(fn, failureFn); },
+      withFailureHandler: function (fn) { return createRunner(successFn, fn); },
+
+      /** 메인 대시보드 데이터 */
+      getMergedWeatherData: function (lats, lons, cityStr, matchStr, startDateStr, endDateStr) {
+        var params = {
+          lats: lats, lons: lons, cities: cityStr, matches: matchStr,
+          start: startDateStr, end: endDateStr
+        };
+        var range = snapshotRange();
+        var isDefaultRange = (startDateStr === range.start && endDateStr === range.end);
+
+        // 첫 화면 1회만 스냅샷으로 즉시 응답한다(속도).
+        // 그 이후의 모든 조회는 실시간 경로를 타서 특보 신선도를 원본과 동일하게 유지한다.
+        if (isDefaultRange && !firstPaintDone && isWithinFirstPaintWindow()) {
+          firstPaintDone = true;
+          loadSnapshot().then(function (snap) {
+            if (!snap || !snap.payload) throw new Error('스냅샷 형식이 올바르지 않습니다.');
+            ok(JSON.stringify({ payload: snap.payload, lastUpdated: snap.lastUpdated }));
+            // 화면을 그린 직후, 원본이 60초마다 하는 실시간 갱신을 즉시 한 번 수행한다.
+            scheduleImmediateLiveRefresh(startDateStr, endDateStr);
+          }).catch(function (err) {
+            console.warn('[API 어댑터] 스냅샷 사용 불가, 실시간 조회로 전환:', err.message);
+            callApi('merged', params).then(ok).catch(ng);
+          });
+          return;
+        }
+
+        // 실시간 조회. 실패하면 화면이 비지 않도록 스냅샷으로 대체한다.
+        callApi('merged', params).then(ok).catch(function (err) {
+          if (!isDefaultRange) { ng(err); return; }
+          console.warn('[API 어댑터] 실시간 조회 실패, 스냅샷으로 대체:', err.message);
+          loadSnapshot().then(function (snap) {
+            ok(JSON.stringify({ payload: snap.payload, lastUpdated: snap.lastUpdated }));
+          }).catch(ng);
+        });
+      },
+
+      /** 읍·면·동 서브지역 모달 */
+      getSubRegionDataFromCache: function (cityName, startDateStr, endDateStr) {
+        callApi('subRegion', { city: cityName, start: startDateStr, end: endDateStr })
+          .then(ok).catch(ng);
+      },
+
+      /** 지도 모달 */
+      getAllMapDataFromCache: function (startDateStr, endDateStr) {
+        callApi('mapData', { start: startDateStr, end: endDateStr })
+          .then(ok).catch(ng);
+      }
+    };
+  }
+
+  if (!window.google) window.google = {};
+  if (!window.google.script) window.google.script = {};
+  window.google.script.run = createRunner(null, null);
+
+  console.log('[API 어댑터] 준비 완료 (모드: ' + API_MODE + ')');
+})();
+</script>
+
+<script>
+window.subRegionsData = {
+  incheon: [
+    { id: 'ic_bupyeong', name: '부평', lat: 37.5070, lon: 126.7206 },
+    { id: 'ic_yeonsu', name: '연수', lat: 37.4101, lon: 126.6783 },
+    { id: 'ic_yeongjong', name: '영종도', lat: 37.4883, lon: 126.5165 },
+    { id: 'ic_seogu', name: '서구', lat: 37.5454, lon: 126.6760 }
+  ],
+  yeoju: [
+    { id: 'yj_ganam', name: '가남읍', lat: 37.2020, lon: 127.5450 },
+    { id: 'yj_jeomdong', name: '점동면', lat: 37.1750, lon: 127.6530 },
+    { id: 'yj_sejong', name: '세종대왕면', lat: 37.2910, lon: 127.5840 },
+    { id: 'yj_heungcheon', name: '흥천면', lat: 37.3300, lon: 127.5610 },
+    { id: 'yj_geumsa', name: '금사면', lat: 37.3800, lon: 127.5180 },
+    { id: 'yj_sanbuk', name: '산북면', lat: 37.4140, lon: 127.4690 },
+    { id: 'yj_daesin', name: '대신면', lat: 37.3710, lon: 127.5870 },
+    { id: 'yj_buknae', name: '북내면', lat: 37.3520, lon: 127.6740 },
+    { id: 'yj_gangcheon', name: '강천면', lat: 37.2620, lon: 127.7020 },
+    { id: 'yj_yeoheung', name: '여흥동', lat: 37.2950, lon: 127.6360 },
+    { id: 'yj_jungang', name: '중앙동', lat: 37.2982, lon: 127.6371 },
+    { id: 'yj_ohak', name: '오학동', lat: 37.3100, lon: 127.6400 }
+  ],
+  icheon: [
+    { id: 'ic_janghowon', name: '장호원읍', lat: 37.1180, lon: 127.6250 },
+    { id: 'ic_bubal', name: '부발읍', lat: 37.2660, lon: 127.4830 },
+    { id: 'ic_sindun', name: '신둔면', lat: 37.3180, lon: 127.4040 },
+    { id: 'ic_baeksa', name: '백사면', lat: 37.3270, lon: 127.4600 },
+    { id: 'ic_hobeop', name: '호법면', lat: 37.2280, lon: 127.4100 },
+    { id: 'ic_majang', name: '마장면', lat: 37.2430, lon: 127.3560 },
+    { id: 'ic_daewol', name: '대월면', lat: 37.2180, lon: 127.4950 },
+    { id: 'ic_moga', name: '모가면', lat: 37.1820, lon: 127.4610 },
+    { id: 'ic_seolseong', name: '설성면', lat: 37.1520, lon: 127.5500 },
+    { id: 'ic_yulmyeon', name: '율면', lat: 37.0770, lon: 127.5520 },
+    { id: 'ic_changjeon', name: '창전동', lat: 37.2800, lon: 127.4430 },
+    { id: 'ic_jeungpo', name: '증포동', lat: 37.2910, lon: 127.4550 },
+    { id: 'ic_jungri', name: '중리동', lat: 37.2723, lon: 127.4350 },
+    { id: 'ic_gwango', name: '관고동', lat: 37.2830, lon: 127.4330 }
+  ],
+  yangpyeong: [
+    { id: 'yp_yangpyeong', name: '양평읍', lat: 37.4913, lon: 127.4876 },
+    { id: 'yp_gangsang', name: '강상면', lat: 37.4680, lon: 127.4960 },
+    { id: 'yp_gangha', name: '강하면', lat: 37.4720, lon: 127.4160 },
+    { id: 'yp_yangseo', name: '양서면', lat: 37.5450, lon: 127.3220 },
+    { id: 'yp_okcheon', name: '옥천면', lat: 37.5260, lon: 127.4550 },
+    { id: 'yp_seojong', name: '서종면', lat: 37.6080, lon: 127.3750 },
+    { id: 'yp_danwol', name: '단월면', lat: 37.5360, lon: 127.6750 },
+    { id: 'yp_cheongun', name: '청운면', lat: 37.5620, lon: 127.7550 },
+    { id: 'yp_yangdong', name: '양동면', lat: 37.4220, lon: 127.7520 },
+    { id: 'yp_jipyeong', name: '지평면', lat: 37.4760, lon: 127.6400 },
+    { id: 'yp_yongmun', name: '용문면', lat: 37.4850, lon: 127.5900 },
+    { id: 'yp_gaegun', name: '개군면', lat: 37.4160, lon: 127.5400 }
+  ],
+  hwaseong: [
+    { id: 'hs_ujeong', name: '우정읍', lat: 37.0780, lon: 126.8150 },
+    { id: 'hs_hyangnam', name: '향남읍', lat: 37.1320, lon: 126.9200 },
+    { id: 'hs_namyang', name: '남양읍', lat: 37.2064, lon: 126.8320 },
+    { id: 'hs_bongdam', name: '봉담읍', lat: 37.2180, lon: 126.9530 },
+    { id: 'hs_maesong', name: '매송면', lat: 37.2430, lon: 126.8910 },
+    { id: 'hs_bibong', name: '비봉면', lat: 37.2340, lon: 126.8450 },
+    { id: 'hs_mado', name: '마도면', lat: 37.2050, lon: 126.7720 },
+    { id: 'hs_songsan', name: '송산면', lat: 37.2100, lon: 126.7320 },
+    { id: 'hs_seosin', name: '서신면', lat: 37.1550, lon: 126.6660 },
+    { id: 'hs_paltan', name: '팔탄면', lat: 37.1580, lon: 126.8770 },
+    { id: 'hs_jangan', name: '장안면', lat: 37.0850, lon: 126.8480 },
+    { id: 'hs_yanggam', name: '양감면', lat: 37.0820, lon: 126.9450 },
+    { id: 'hs_jeongnam', name: '정남면', lat: 37.1650, lon: 126.9820 },
+    { id: 'hs_dongtan', name: '동탄동', lat: 37.2000, lon: 127.0980 },
+    { id: 'hs_byeongjeom', name: '병점동', lat: 37.2070, lon: 127.0350 }
+  ],
+  suwon: [
+    { id: 'sw_jangan', name: '장안구', lat: 37.3030, lon: 127.0080 },
+    { id: 'sw_gwonseon', name: '권선구', lat: 37.2570, lon: 126.9710 },
+    { id: 'sw_paldal', name: '팔달구', lat: 37.2760, lon: 127.0160 },
+    { id: 'sw_yeongtong', name: '영통구', lat: 37.2590, lon: 127.0460 }
+  ],
+  yeoncheon: [
+    { id: 'yc_yeoncheon', name: '연천읍', lat: 38.0964, lon: 127.0744 },
+    { id: 'yc_jeongok', name: '전곡읍', lat: 38.0260, lon: 127.0650 },
+    { id: 'yc_gunnam', name: '군남면', lat: 38.0870, lon: 127.0180 },
+    { id: 'yc_cheongsan', name: '청산면', lat: 37.9850, lon: 127.0710 },
+    { id: 'yc_baekhak', name: '백학면', lat: 38.0250, lon: 126.8780 },
+    { id: 'yc_misan', name: '미산면', lat: 38.0680, lon: 126.9600 },
+    { id: 'yc_wangjing', name: '왕징면', lat: 38.1060, lon: 126.9550 },
+    { id: 'yc_sinseo', name: '신서면', lat: 38.1880, lon: 127.1350 },
+    { id: 'yc_jung', name: '중면', lat: 38.1400, lon: 126.9850 },
+    { id: 'yc_jangnam', name: '장남면', lat: 37.9940, lon: 126.8580 }
+  ],
+  pocheon: [
+    { id: 'pc_soheul', name: '소흘읍', lat: 37.8240, lon: 127.1430 },
+    { id: 'pc_gunnae', name: '군내면', lat: 37.8860, lon: 127.2280 },
+    { id: 'pc_naechon', name: '내촌면', lat: 37.7950, lon: 127.2230 },
+    { id: 'pc_gasan', name: '가산면', lat: 37.8380, lon: 127.1850 },
+    { id: 'pc_sinbuk', name: '신북면', lat: 37.9350, lon: 127.2080 },
+    { id: 'pc_changsu', name: '창수면', lat: 37.9840, lon: 127.1700 },
+    { id: 'pc_yeongjung', name: '영중면', lat: 37.9880, lon: 127.2340 },
+    { id: 'pc_ildong', name: '일동면', lat: 37.9620, lon: 127.3220 },
+    { id: 'pc_idong', name: '이동면', lat: 38.0460, lon: 127.3820 },
+    { id: 'pc_yeongbuk', name: '영북면', lat: 38.0660, lon: 127.2750 },
+    { id: 'pc_gwanin', name: '관인면', lat: 38.1250, lon: 127.2240 },
+    { id: 'pc_hwahyeon', name: '화현면', lat: 37.8920, lon: 127.3180 },
+    { id: 'pc_pocheon', name: '포천동', lat: 37.8949, lon: 127.2003 },
+    { id: 'pc_seondan', name: '선단동', lat: 37.8550, lon: 127.1680 }
+  ],
+  paju: [
+    { id: 'pj_munsan', name: '문산읍', lat: 37.8300, lon: 126.7840 },
+    { id: 'pj_jori', name: '조리읍', lat: 37.7380, lon: 126.8150 },
+    { id: 'pj_beobwon', name: '법원읍', lat: 37.8350, lon: 126.9030 },
+    { id: 'pj_paju', name: '파주읍', lat: 37.8220, lon: 126.8330 },
+    { id: 'pj_gwangtan', name: '광탄면', lat: 37.7660, lon: 126.8900 },
+    { id: 'pj_tanhyeon', name: '탄현면', lat: 37.7950, lon: 126.7020 },
+    { id: 'pj_wollong', name: '월롱면', lat: 37.7880, lon: 126.7860 },
+    { id: 'pj_jeokseong', name: '적성면', lat: 37.9350, lon: 126.9200 },
+    { id: 'pj_papyeong', name: '파평면', lat: 37.9220, lon: 126.8520 },
+    { id: 'pj_jangdan', name: '장단면', lat: 37.9150, lon: 126.7450 },
+    { id: 'pj_gyoha', name: '교하동', lat: 37.7180, lon: 126.6960 },
+    { id: 'pj_unjeong', name: '운정동', lat: 37.7150, lon: 126.7450 },
+    { id: 'pj_geumchon', name: '금촌동', lat: 37.7599, lon: 126.7798 }
+  ],
+  goyang: [
+    { id: 'gy_deogyang', name: '덕양구', lat: 37.6400, lon: 126.8680 },
+    { id: 'gy_ilsandong', name: '일산동구', lat: 37.6650, lon: 126.7830 },
+    { id: 'gy_ilsanseo', name: '일산서구', lat: 37.6750, lon: 126.7450 }
+  ],
+  ganghwa: [
+    { id: 'gh_ganghwa', name: '강화읍', lat: 37.7466, lon: 126.4880 },
+    { id: 'gh_seonwon', name: '선원면', lat: 37.7120, lon: 126.5050 },
+    { id: 'gh_buleun', name: '불은면', lat: 37.6720, lon: 126.5050 },
+    { id: 'gh_gilsang', name: '길상면', lat: 37.6250, lon: 126.4950 },
+    { id: 'gh_hwado', name: '화도면', lat: 37.6180, lon: 126.4150 },
+    { id: 'gh_yangdo', name: '양도면', lat: 37.6620, lon: 126.4350 },
+    { id: 'gh_naega', name: '내가면', lat: 37.7080, lon: 126.4150 },
+    { id: 'gh_hajeom', name: '하점면', lat: 37.7680, lon: 126.4150 },
+    { id: 'gh_yangsa', name: '양사면', lat: 37.8050, lon: 126.4300 },
+    { id: 'gh_songhae', name: '송해면', lat: 37.7850, lon: 126.4750 },
+    { id: 'gh_gyodong', name: '교동면', lat: 37.7820, lon: 126.2950 },
+    { id: 'gh_samsan', name: '삼산면', lat: 37.6950, lon: 126.3350 },
+    { id: 'gh_seodo', name: '서도면', lat: 37.6520, lon: 126.2100 }
+  ],
+  ongjin: [
+    { id: 'oj_bukdo', name: '북도면', lat: 37.5350, lon: 126.4100 },
+    { id: 'oj_yeonpyeong', name: '연평면', lat: 37.6650, lon: 125.7000 },
+    { id: 'oj_baengnyeong', name: '백령면', lat: 37.9650, lon: 124.6600 },
+    { id: 'oj_daecheong', name: '대청면', lat: 37.8250, lon: 124.7080 },
+    { id: 'oj_deokjeok', name: '덕적면', lat: 37.2350, lon: 126.1200 },
+    { id: 'oj_jawol', name: '자월면', lat: 37.2550, lon: 126.3150 },
+    { id: 'oj_yeongheung', name: '영흥면', lat: 37.2520, lon: 126.4950 }
+  ],
+  gimpo: [
+    { id: 'gp_tongjin', name: '통진읍', lat: 37.6850, lon: 126.6050 },
+    { id: 'gp_gochon', name: '고촌읍', lat: 37.5950, lon: 126.7650 },
+    { id: 'gp_yangchon', name: '양촌읍', lat: 37.6520, lon: 126.6250 },
+    { id: 'gp_daegot', name: '대곶면', lat: 37.6320, lon: 126.5650 },
+    { id: 'gp_wolgot', name: '월곶면', lat: 37.7220, lon: 126.5450 },
+    { id: 'gp_haseong', name: '하성면', lat: 37.7420, lon: 126.6150 },
+    { id: 'gp_gimpobon', name: '김포본동', lat: 37.6152, lon: 126.7156 },
+    { id: 'gp_janggibon', name: '장기본동', lat: 37.6350, lon: 126.6650 },
+    { id: 'gp_sau', name: '사우동', lat: 37.6250, lon: 126.7250 },
+    { id: 'gp_pungmu', name: '풍무동', lat: 37.6050, lon: 126.7150 },
+    { id: 'gp_janggi', name: '장기동', lat: 37.6450, lon: 126.6650 },
+    { id: 'gp_gurae', name: '구래동', lat: 37.6420, lon: 126.6350 },
+    { id: 'gp_masan', name: '마산동', lat: 37.6320, lon: 126.6450 },
+    { id: 'gp_unyang', name: '운양동', lat: 37.6550, lon: 126.6850 }
+  ],
+  pyeongtaek: [
+    { id: 'pt_paengseong', name: '팽성읍', lat: 36.9550, lon: 127.0450 },
+    { id: 'pt_anjung', name: '안중읍', lat: 36.9920, lon: 126.9200 },
+    { id: 'pt_poseung', name: '포승읍', lat: 36.9850, lon: 126.8550 },
+    { id: 'pt_cheongbuk', name: '청북읍', lat: 37.0450, lon: 126.9250 },
+    { id: 'pt_jinwi', name: '진위면', lat: 37.1120, lon: 127.0650 },
+    { id: 'pt_seotan', name: '서탄면', lat: 37.1250, lon: 127.0250 },
+    { id: 'pt_godeok', name: '고덕면', lat: 37.0420, lon: 127.0250 },
+    { id: 'pt_oseong', name: '오성면', lat: 37.0150, lon: 126.9650 },
+    { id: 'pt_hyeondeok', name: '현덕면', lat: 36.9450, lon: 126.9050 },
+    { id: 'pt_jungang', name: '중앙동', lat: 37.0620, lon: 127.0650 },
+    { id: 'pt_seojeong', name: '서정동', lat: 37.0580, lon: 127.0550 },
+    { id: 'pt_songtan', name: '송탄동', lat: 37.0850, lon: 127.0450 },
+    { id: 'pt_jisan', name: '지산동', lat: 37.0780, lon: 127.0550 },
+    { id: 'pt_songbuk', name: '송북동', lat: 37.0820, lon: 127.0620 },
+    { id: 'pt_sinjang', name: '신장동', lat: 37.0820, lon: 127.0380 }
+  ],
+  yongin: [
+    { id: 'yi_cheoin', name: '처인구', lat: 37.2343, lon: 127.2014 },
+    { id: 'yi_giheung', name: '기흥구', lat: 37.2736, lon: 127.1059 },
+    { id: 'yi_suji', name: '수지구', lat: 37.3222, lon: 127.0975 },
+    { id: 'yi_baegam', name: '백암면', lat: 37.1650, lon: 127.3590 },
+    { id: 'yi_idong', name: '이동읍', lat: 37.1425, lon: 127.1956 }
+  ],
+  anseong: [
+    { id: 'as_gongdo', name: '공도읍', lat: 37.0080, lon: 127.1750 },
+    { id: 'as_bogae', name: '보개면', lat: 37.0550, lon: 127.2850 },
+    { id: 'as_geumgwang', name: '금광면', lat: 36.9850, lon: 127.3250 },
+    { id: 'as_seoun', name: '서운면', lat: 36.9550, lon: 127.2850 },
+    { id: 'as_miyang', name: '미양면', lat: 36.9650, lon: 127.2350 },
+    { id: 'as_daedeok', name: '대덕면', lat: 37.0250, lon: 127.2450 },
+    { id: 'as_yangseong', name: '양성면', lat: 37.0850, lon: 127.2250 },
+    { id: 'as_wongok', name: '원곡면', lat: 37.0550, lon: 127.1650 },
+    { id: 'as_iljuk', name: '일죽면', lat: 37.0850, lon: 127.4650 },
+    { id: 'as_juksan', name: '죽산면', lat: 37.0650, lon: 127.4250 },
+    { id: 'as_samjuk', name: '삼죽면', lat: 37.0650, lon: 127.3550 },
+    { id: 'as_gosam', name: '고삼면', lat: 37.0950, lon: 127.2650 },
+    { id: 'as_anseong1', name: '안성1동', lat: 37.0080, lon: 127.2758 },
+    { id: 'as_anseong2', name: '안성2동', lat: 37.0020, lon: 127.2720 },
+    { id: 'as_anseong3', name: '안성3동', lat: 37.0120, lon: 127.2650 }
+  ]
+};
+</script>
+  <script>
+// 1. 20개 지점 데이터 셋 구축 (광역 4개 신규 + 기존 16개 유지)
+const locations = [
+  { id: 'incheon', name: '인천', lat: 37.4777, lon: 126.6249 }, // 인천(112) ASOS
+  { id: 'yeoju', name: '여주', lat: 37.2917, lon: 127.6372 }, // 여주(465) AWS
+  { id: 'icheon', name: '이천', lat: 37.2640, lon: 127.4842 }, // 이천(203) ASOS
+  { id: 'yangpyeong', name: '양평', lat: 37.4886, lon: 127.4944 }, // 양평(202) ASOS
+  { id: 'hwaseong', name: '화성', lat: 37.1651, lon: 126.8285 }, // 화성(488) AWS
+  { id: 'suwon', name: '수원', lat: 37.2574, lon: 126.9830 }, // 수원(119) ASOS
+  { id: 'yeoncheon', name: '연천', lat: 38.0964, lon: 127.0744 }, // 연천(491) AWS
+  { id: 'pocheon', name: '포천', lat: 37.8949, lon: 127.2003 }, // 포천(473) AWS
+  { id: 'paju', name: '파주', lat: 37.8859, lon: 126.7661 }, // 파주(99) ASOS
+  { id: 'goyang', name: '고양', lat: 37.6401, lon: 126.8322 }, // 고양(540) AWS
+  { id: 'ganghwa', name: '강화', lat: 37.7074, lon: 126.4463 }, // 강화(201) ASOS
+  /* { id: 'ongjin', name: '옹진', lat: 37.9660, lon: 124.6305 }, // 백령도(102) ASOS (제외 처리) */
+  { id: 'gimpo', name: '김포', lat: 37.6049, lon: 126.7151 }, // 김포(441) AWS
+  { id: 'pyeongtaek', name: '평택', lat: 36.9926, lon: 127.1129 }, // 평택(356) AWS
+  { id: 'yongin', name: '용인', lat: 37.2411, lon: 127.1774 }, // 용인(549) AWS
+  { id: 'anseong', name: '안성', lat: 37.0116, lon: 127.2758 }  // 안성(470) AWS
+];
+
+// Open-Meteo WMO Code 파싱 함수
+function getWeatherCondition(code) {
+  switch (true) {
+    case code === 0: return { text: '맑음', icon: 'fa-sun', color: 'text-amber-500 md:text-yellow-400' };
+    case code === 1: return { text: '대체로 맑음', icon: 'fa-cloud-sun', color: 'text-orange-500 md:text-yellow-300' };
+    case code === 2: return { text: '구름조금', icon: 'fa-cloud', color: 'text-slate-500 md:text-slate-300' };
+    case code === 3: return { text: '흐림', icon: 'fa-cloud', color: 'text-slate-600 md:text-slate-400' };
+    case (code >= 45 && code <= 48): return { text: '안개', icon: 'fa-smog', color: 'text-slate-500 md:text-slate-400' };
+    case (code >= 51 && code <= 55): return { text: '이슬비', icon: 'fa-cloud-rain', color: 'text-blue-500 md:text-blue-300' };
+    case (code >= 61 && code <= 65): return { text: '비', icon: 'fa-cloud-showers-heavy', color: 'text-blue-600 md:text-blue-500' };
+    case (code >= 71 && code <= 77): return { text: '눈', icon: 'fa-snowflake', color: 'text-sky-500 md:text-white' };
+    case (code >= 80 && code <= 82): return { text: '소나기', icon: 'fa-cloud-showers-water', color: 'text-blue-500 md:text-blue-400' };
+    case (code >= 95 && code <= 99): return { text: '뇌우', icon: 'fa-cloud-bolt', color: 'text-indigo-600 md:text-yellow-500' };
+    default: return { text: '알수없음', icon: 'fa-circle-question', color: 'text-slate-500 md:text-slate-500' };
+  }
+}
+
+// 전역 Toast 메시지 함수
+window.showToast = function(message, isError = false) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  const bgColor = isError ? 'bg-red-500' : 'bg-slate-800 md:bg-blue-600';
+  const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"><\/i>' : '<i class="fa-solid fa-circle-info"><\/i>';
+  
+  toast.className = `flex items-center gap-2 px-4 py-3 text-white text-sm font-medium rounded shadow-lg transition-all duration-300 transform translate-y-4 opacity-0 ${bgColor}`;
+  toast.innerHTML = `${icon} <span>${message}<\/span>`;
+  
+  container.appendChild(toast);
+  
+  // 페이드인 애니메이션
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-4', 'opacity-0');
+  });
+  
+  // 3초 후 페이드아웃 및 제거
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-2');
+    setTimeout(() => {
+      if(container.contains(toast)) {
+        container.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
+};
+
+window.getPeriodText = function(sDateStr, eDateStr) {
+  if (!sDateStr || !eDateStr) return '선택 기간';
+  const s = new Date(sDateStr);
+  const e = new Date(eDateStr);
+  const diffDays = Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
+  const today = new Date();
+  const offset = today.getTimezoneOffset() * 60000;
+  const todayStr = (new Date(today - offset)).toISOString().split('T')[0];
+  
+  if (eDateStr === todayStr) {
+      return `최근 ${diffDays}일`;
+  } else {
+      return `${diffDays}일간`;
+  }
+};
+
+// 2. Fetch 및 Mapping 로직 구조화
+async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) {
+  const CACHE_TTL = 5 * 60 * 1000; // 5분 TTL
+  const cacheKey = `weather_data_v6_${startDateStr}_${endDateStr}`;
+  let cached = null;
+  try {
+    cached = sessionStorage.getItem(cacheKey);
+  } catch (e) {
+    console.warn('SessionStorage unavailable, skipping cache', e);
+  }
+
+  const urlParamsForCache = new URLSearchParams(window.location.search);
+  const isTestMode = urlParamsForCache.get('mode') === 'test_rain';
+
+  if (!isTestMode && !forceRefresh && cached) {
+    const data = JSON.parse(cached);
+    if (Date.now() - data.timestamp < CACHE_TTL) {
+      console.log('Using cached data for', startDateStr, 'to', endDateStr);
+      updateLastTimeString(data.lastUpdated);
+      document.getElementById('loading-indicator').classList.add('hidden');
+      return data.payload;
+    }
+  }
+
+  // 로딩 상태 시작
+  document.getElementById('loading-indicator').classList.remove('hidden');
+
+  try {
+    const lats = locations.map(l => l.lat).join(',');
+    const lons = locations.map(l => l.lon).join(',');
+    const locNamesStr = locations.map(l => l.name).join(',');
+    // 관측소 이름 매칭용 (옹진은 '백령도'로 매칭)
+    const matchNamesStr = locations.map(l => l.name === '옹진' ? '백령도' : l.name).join(',');
+    
+    console.log('Fetching Hybrid Data via GAS Backend...');
+    let results;
+    let serverLastUpdated = null;
+    
+    // 로컬/테스트 환경에서 google 객체가 없을 경우를 대비
+    if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        throw new Error("GAS 환경(google.script.run)을 찾을 수 없습니다.");
+    }
+    
+    const responseObj = await new Promise((resolve, reject) => {
+        google.script.run
+            .withSuccessHandler((res) => {
+                try {
+                    resolve(JSON.parse(res));
+                } catch(e) { reject(e); }
+            })
+            .withFailureHandler(reject)
+            .getMergedWeatherData(lats, lons, locNamesStr, matchNamesStr, startDateStr, endDateStr);
+    });
+
+    if (responseObj && responseObj.payload) {
+        results = responseObj.payload;
+        serverLastUpdated = responseObj.lastUpdated;
+    } else {
+        results = responseObj;
+        if (results && results.length > 0 && results[0].lastUpdated) {
+            serverLastUpdated = results[0].lastUpdated;
+        }
+    }
+    
+    updateLastTimeString(serverLastUpdated);
+
+    // 기상청 특보 기준 판별 (단일 레벨 반환)
+    function getAlertLevel(precips) {
+        let level = 'none';
+        for (let i = 0; i < precips.length; i++) {
+            let sum3h = 0;
+            for (let j = 0; j < 3 && i + j < precips.length; j++) sum3h += precips[i+j];
+            let sum12h = 0;
+            for (let j = 0; j < 12 && i + j < precips.length; j++) sum12h += precips[i+j];
+            
+            if (sum3h >= 90 || sum12h >= 180) return 'red';
+            if (sum3h >= 60 || sum12h >= 110) level = 'orange';
+        }
+        return level;
+    }
+
+    // 시간별 배열 요소마다 특보 기준 판별 배열 반환 (Peak Hour 단일 표출 로직)
+    function getAlertArray(precips) {
+        const alerts = new Array(precips.length).fill('none');
+        
+        for (let i = 0; i < precips.length; i++) {
+            // 3시간 누적 검사
+            let sum3h = 0;
+            let max3h = -1;
+            let max3hIdx = i;
+            for (let j = 0; j < 3 && i + j < precips.length; j++) {
+                sum3h += precips[i+j];
+                if (precips[i+j] > max3h) {
+                    max3h = precips[i+j];
+                    max3hIdx = i+j;
+                }
+            }
+            
+            // 12시간 누적 검사
+            let sum12h = 0;
+            let max12h = -1;
+            let max12hIdx = i;
+            for (let j = 0; j < 12 && i + j < precips.length; j++) {
+                sum12h += precips[i+j];
+                if (precips[i+j] > max12h) {
+                    max12h = precips[i+j];
+                    max12hIdx = i+j;
+                }
+            }
+            
+            // 임계값 초과 시, 해당 구간 내 '최대 강수량 시간'에만 뱃지 부여
+            if (sum3h >= 90) alerts[max3hIdx] = 'red';
+            else if (sum3h >= 60 && alerts[max3hIdx] !== 'red') alerts[max3hIdx] = 'orange';
+            
+            if (sum12h >= 180) alerts[max12hIdx] = 'red';
+            else if (sum12h >= 110 && alerts[max12hIdx] !== 'red') alerts[max12hIdx] = 'orange';
+        }
+        return alerts;
+    }
+
+    // 데이터 정규화(Mapping) 처리
+    const processedData = locations.map((loc, index) => {
+        const data = results[index] || {};
+        
+        // 1. 기상 상태 및 실황 데이터 파싱
+        const currentTemp = data.current?.temp !== undefined ? Number(data.current.temp).toFixed(1) : '-';
+        // AWS에서 서버가 계산해준 과거 누적 강수량 사용 (없으면 0.0)
+        const totalPrecip = data.historyTotal !== undefined ? Number(data.historyTotal).toFixed(1) : '0.0';
+        
+        // 진짜 실시간 날씨 코드(data.current.code) 우선 적용. (없으면 과거처럼 강수량 기반 임시 대체)
+        const conditionCode = data.current?.code !== undefined ? data.current.code : ((parseFloat(totalPrecip) > 0) ? 61 : 0);
+        const condition = getWeatherCondition(conditionCode); 
+
+        // 2. 향후 24시간 강수량 (기상청 단기예보)
+        let next24hSum = 0;
+        const targetPrecips = [];
+        const hourlyTimes = [];
+        const hourlyPrecips = [];
+        
+        if (data.forecast24h) {
+            // 현재 시간을 정각 기준으로 구함 (예: 10:22 -> 10:00)
+            const now = new Date();
+            const currentHourTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0).getTime();
+            
+            // 24시간의 타임스탬프 배열 생성
+            const targetTimes = [];
+            for (let i = 0; i < 24; i++) {
+                targetTimes.push(new Date(currentHourTime + i * 3600000));
+            }
+            
+            if (data.forecast24h.precip_hourly) {
+                // Open-Meteo 포맷인 경우 (외국 등)
+                targetTimes.forEach(t => {
+                    const dtStr = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,'0') + "-" + String(t.getDate()).padStart(2,'0') + "T" + String(t.getHours()).padStart(2,'0') + ":00";
+                    let pValue = 0;
+                    const match = data.forecast24h.precip_hourly.find(p => {
+                        const pDtStr = p.date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + "T" + p.time.substring(0,2) + ":00";
+                        return pDtStr === dtStr;
+                    });
+                    if (match) {
+                        pValue = parseFloat(match.value);
+                        if (isNaN(pValue)) pValue = 0;
+                    }
+                    next24hSum += pValue;
+                    targetPrecips.push(pValue);
+                    hourlyTimes.push(dtStr);
+                    hourlyPrecips.push(pValue);
+                });
+            } else {
+                // KMA 단기예보(forecast24h) 전용 - Open-Meteo 참조 배제
+                targetTimes.forEach(t => {
+                    const y = t.getFullYear();
+                    const m = String(t.getMonth()+1).padStart(2,'0');
+                    const d = String(t.getDate()).padStart(2,'0');
+                    const h = String(t.getHours()).padStart(2,'0');
+                    
+                    const dtStrIso = `${y}-${m}-${d}T${h}:00`;
+                    const dtStrKmaOld = `${y}${m}${d}${h}00`;
+                    const dtStrKmaNew = `${y}-${m}-${d}T${h}:00:00+09:00`;
+                    
+                    let pValue = 0;
+                    // 기상청 데이터 매칭 (없으면 0 처리)
+                    if (data.forecast24h[dtStrKmaNew] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrKmaNew]);
+                    } else if (data.forecast24h[dtStrKmaOld] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrKmaOld]);
+                    } else if (data.forecast24h[dtStrIso] !== undefined) {
+                        pValue = parseFloat(data.forecast24h[dtStrIso]);
+                    }
+                    
+                    if (isNaN(pValue)) pValue = 0;
+                    next24hSum += pValue;
+                    targetPrecips.push(pValue);
+                    hourlyTimes.push(dtStrIso);
+                    hourlyPrecips.push(pValue);
+                });
+            }
+        }
+        const next24hPrecip = next24hSum.toFixed(1);
+
+        // 3. 향후 10일 강수량 (24시간 예측과 겹치지 않도록 필터링)
+        const nowMs = Date.now();
+        const last24hTimeMs = hourlyTimes.length > 0 ? new Date(hourlyTimes[hourlyTimes.length - 1]).getTime() : nowMs;
+
+        const futureHourlyTimes = [];
+        const futureHourlyPrecips = [];
+        if (data.forecast10dHourly) {
+            Object.keys(data.forecast10dHourly).sort().forEach(key => {
+                const itemTimeMs = new Date(key).getTime();
+                // 24시간 예측 이후의 데이터만 추가
+                if (itemTimeMs > last24hTimeMs) {
+                    futureHourlyTimes.push(key);
+                    let pValue = parseFloat(data.forecast10dHourly[key]);
+                    if (isNaN(pValue)) pValue = 0;
+                    futureHourlyPrecips.push(pValue);
+                }
+            });
+        }
+
+        const rawFutureDates = data.forecast10d?.time || [];
+        const futureDates = [];
+        const futurePrecips = [];
+        let next10dSum = 0;
+
+        rawFutureDates.forEach((dateStr, idx) => {
+            let dailySum = 0;
+            let matchedHours = 0;
+            
+            for(let i = 0; i < futureHourlyTimes.length; i++) {
+                if(futureHourlyTimes[i].startsWith(dateStr)) {
+                    matchedHours++;
+                    dailySum += futureHourlyPrecips[i];
+                }
+            }
+            
+            const dateMs = new Date(dateStr).getTime();
+            const last24hDateStr = hourlyTimes.length > 0 ? hourlyTimes[hourlyTimes.length - 1].substring(0, 10) : "";
+            const last24hDateMs = last24hDateStr ? new Date(last24hDateStr).getTime() : 0;
+
+            // 시간별 데이터가 없고, 24시간 예측 범위 밖의 완전한 미래 날짜인 경우에만 폴백 사용
+            if (matchedHours === 0 && dateMs > last24hDateMs) {
+                dailySum = data.forecast10d?.precipitation_sum?.[idx] || 0;
+            }
+            
+            // 24시간 예측 내에 완전히 포함되어 남은 시간별 데이터가 없는 날짜는 모달 목록에서 아예 제외(스킵)
+            if (matchedHours === 0 && dateMs <= last24hDateMs) {
+                return; 
+            }
+            
+            futureDates.push(dateStr);
+            futurePrecips.push(dailySum);
+            next10dSum += dailySum;
+        });
+
+        const next10dPrecip = next10dSum.toFixed(1);
+
+        // 4. Sliding Window 경보 레벨 판별 (1시간 50mm, 3시간 90mm 등 -> 기상청 3시간/12시간 기준으로 변경)
+        const max24hAlert = getAlertLevel(hourlyPrecips);
+        const max10dAlert = getAlertLevel(futureHourlyPrecips);
+        let alertLevel = 'none';
+        if (max24hAlert === 'red' || max10dAlert === 'red') alertLevel = 'red';
+        else if (max24hAlert === 'orange' || max10dAlert === 'orange') alertLevel = 'orange';
+
+        return {
+            ...loc,
+            condition,
+            currentTemp,
+            totalPrecip,
+            next24hPrecip,
+            next10dPrecip,
+            alertLevel,
+            max24hAlert,
+            max10dAlert,
+            dailyDates: data.dailyDates || [],
+            dailyPrecips: data.dailyPrecips || [],
+            futureDates: futureDates,
+            futurePrecips: futurePrecips,
+            futureHourlyTimes: futureHourlyTimes,
+            futureHourlyPrecips: futureHourlyPrecips,
+            futureHourlyAlerts: getAlertArray(futureHourlyPrecips),
+            hourlyTimes: hourlyTimes,
+            hourlyPrecips: hourlyPrecips,
+            hourlyAlerts: getAlertArray(hourlyPrecips),
+            historyHourlyTimes: data.historyHourlyTimes || [],
+            historyHourlyPrecips: data.historyHourlyPrecips || [],
+            alertStatus: data.alertStatus || '없음',
+            tmEf: data.tmEf || ''
+        };
+    });
+
+    // SessionStorage 캐싱 저장
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        timestamp: Date.now(),
+        payload: processedData,
+        lastUpdated: serverLastUpdated
+      }));
+    } catch (e) {
+      console.warn('SessionStorage setItem failed', e);
+    }
+
+    // [정식 기능] URL 파라미터 ?mode=test_rain 기상 경보 시스템 테스트 모드
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'test_rain' && processedData && processedData.length >= 2) {
+      console.log('[Mock Mode] ?mode=test_rain 호우 경보 시스템 가상 테스트 가동');
+      
+      // 1. 인천 (index 0) -> 주의보(orange) 주입
+      processedData[0].alertLevel = 'orange';
+      
+      // 2. 여주 (index 1) -> 경보(red) 주입 및 1시간 강수량 55.5mm 임시 추가하여 긴급 모달 트리거
+      processedData[1].alertLevel = 'red';
+      
+      const futureHour = new Date(Date.now() + 2 * 60 * 60 * 1000);
+      const offset = futureHour.getTimezoneOffset() * 60000;
+      const futureLocalStr = new Date(futureHour - offset).toISOString().substring(0, 16);
+      
+      processedData[1].hourlyTimes.push(futureLocalStr);
+      processedData[1].hourlyPrecips.push(55.5);
+    }
+
+    document.getElementById('loading-indicator').classList.add('hidden');
+    updateLastTimeString();
+
+    return processedData;
+    
+  } catch (error) {
+    console.error('[GAS Fetch Exception]', error);
+    document.getElementById('loading-indicator').classList.add('hidden');
+    window.showToast('데이터 로드 실패 (GAS 환경 확인 요망)', true);
+    return null;
+  }
+}
+
+function updateLastTimeString(serverString) {
+  let timeStr = '';
+  if (serverString) {
+    timeStr = `최종 갱신: ${serverString}`;
+  } else {
+    const now = new Date();
+    timeStr = `최종 갱신: ${now.toLocaleTimeString('ko-KR')}`;
+  }
+  
+  // 1. 메인 화면 갱신
+  document.getElementById('last-updated').innerText = timeStr;
+  
+  // 2. 맵 내부 텍스트 동기화
+  const mapModalInfo = document.getElementById('map-modal-info');
+  if (mapModalInfo) {
+    mapModalInfo.textContent = timeStr;
+  }
+}
+
+// 3. UI 렌더링 로직
+function renderCards(dataArray, periodText = '') {
+  const grid = document.getElementById('weather-grid');
+  const skeletonContainer = document.getElementById('skeleton-container');
+  
+  // 최초 로딩 시 스켈레톤 숨김 및 본 데이터 페이드인 처리
+  if (skeletonContainer && !skeletonContainer.classList.contains('opacity-0')) {
+    skeletonContainer.classList.remove('opacity-100');
+    skeletonContainer.classList.add('opacity-0');
+    setTimeout(() => {
+      skeletonContainer.style.display = 'none';
+    }, 500); // tailwind duration-500과 맞춤
+  }
+  
+  grid.classList.remove('opacity-0');
+  grid.classList.add('opacity-100');
+
+  grid.innerHTML = '';
+  
+  if(!dataArray || dataArray.length === 0) return;
+
+  // 상단 10일 예보 요약 티커 렌더링 (UI 렌더링 블로킹 방지를 위해 비동기 지연 실행)
+  if (typeof window.renderTicker === 'function') {
+      setTimeout(() => {
+          window.renderTicker(dataArray);
+      }, 0);
+  }
+  // 긴급 호우 알림 검사 (50mm 이상) - 비동기 지연 실행
+  setTimeout(() => {
+      checkEmergencyRain(dataArray);
+  }, 0);
+
+  dataArray.forEach(data => {
+    let borderClass = 'border-2 border-[#EEEEEE] md:border-slate-700/50 shadow-[0_2px_10px_rgba(0,0,0,0.03)] md:shadow-none hover:-translate-y-1 hover:border-blue-400 md:hover:border-blue-500/70 hover:shadow-lg md:hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]';
+    let badgeHtml = '';
+    let hasAlert = false;
+    
+    if (data.alertStatus && data.alertStatus.startsWith('호우경보')) {
+      let displayStr = data.alertStatus.replace('호우경보', '경보');
+      borderClass = 'border-2 border-red-500 md:border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] md:shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(239,68,68,0.6)]';
+      badgeHtml = `
+        <div class="group/badge absolute -top-3 -left-3 bg-gradient-to-r from-red-500 to-red-700 border-2 border-white md:border-red-400/80 shadow-lg shadow-red-500/50 text-white text-[13px] font-extrabold px-4 py-1 rounded-full z-20 cursor-help animate-pulse transform hover:-translate-y-1 transition-transform duration-200">
+          ${displayStr}
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max bg-black/80 text-white text-[11px] font-normal py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
+    } else if (data.alertStatus && data.alertStatus.startsWith('호우주의보')) {
+      let displayStr = data.alertStatus.replace('호우주의보', '주의보');
+      borderClass = 'border-2 border-orange-500 md:border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] md:shadow-[0_0_20px_rgba(249,115,22,0.4)] hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(249,115,22,0.6)]';
+      badgeHtml = `
+        <div class="group/badge absolute -top-3 -left-3 bg-gradient-to-r from-orange-400 to-orange-600 border-2 border-white md:border-orange-300/80 shadow-lg shadow-orange-500/40 text-white text-[13px] font-extrabold px-4 py-1 rounded-full z-20 cursor-help transform hover:-translate-y-1 hover:shadow-orange-500/60 transition-all duration-200">
+          ${displayStr}
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max bg-black/80 text-white text-[11px] font-normal py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
+    } else if (data.alertStatus && data.alertStatus.startsWith('예비특보')) {
+      let displayStr = data.alertStatus.replace('예비특보', '예비');
+      borderClass = 'border-2 border-blue-500 md:border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.4)] md:shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(59,130,246,0.6)]';
+      badgeHtml = `
+        <div class="group/badge absolute -top-3 -left-3 bg-gradient-to-r from-blue-400 to-blue-600 border-2 border-white md:border-blue-300/80 shadow-lg shadow-blue-500/40 text-white text-[13px] font-extrabold px-4 py-1 rounded-full z-20 cursor-help transform hover:-translate-y-1 hover:shadow-blue-500/60 transition-all duration-200">
+          ${displayStr}
+          <div class="opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-200 absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max bg-black/80 text-white text-[11px] font-normal py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap z-50">
+            발효: ${data.tmEf}
+          </div>
+        </div>`;
+      hasAlert = true;
+    }
+
+    const card = document.createElement('div');
+    card.className = `weather-card rounded-2xl p-3 sm:p-3 pb-3 flex flex-col justify-between h-auto min-h-fit bg-white md:bg-transparent relative overflow-visible group ${borderClass} transition-all duration-300`;
+    
+    // 장식용 배경 이펙트
+    const bgBlur = document.createElement('div');
+    bgBlur.className = `absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity bg-current ${data.condition.color} pointer-events-none`;
+    card.appendChild(bgBlur);
+
+    // 모서리 리본 뱃지 (경보/주의)
+    if (hasAlert) {
+      card.insertAdjacentHTML('beforeend', badgeHtml);
+    }
+
+    const innerContent = document.createElement('div');
+    innerContent.className = 'relative z-10 flex flex-col h-full gap-1';
+    
+    innerContent.innerHTML = `
+      <div class="flex justify-between items-center mb-2 mt-4">
+        <!-- 좌측: 지점명 -->
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg sm:text-xl font-bold tracking-tight text-[#1D1D1F] md:text-white/90 shrink-0">
+            ${data.name}
+          </h2>
+          <button class="bg-blue-50 text-blue-600 hover:bg-blue-100 md:bg-blue-900/30 md:text-blue-300 md:hover:bg-blue-900/50 transition-colors px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1.5 border border-blue-200 md:border-blue-800 whitespace-nowrap shrink-0" onclick='window.openSubRegionModal("${data.name}")'>
+            읍면동 보기
+          </button>
+        </div>
+        
+        <!-- 우측: 기온 + 날씨 아이콘 세트 -->
+        <div class="flex items-center gap-3 sm:gap-4">
+          <span class="text-lg sm:text-xl font-bold text-[#1D1D1F] md:text-slate-200 tracking-tight shrink-0">${data.currentTemp} <span class="text-xs sm:text-sm font-normal">°C<\/span><\/span>
+          <div class="flex flex-col items-center shrink-0">
+            <i class="fa-solid ${data.condition.icon} text-xl ${data.condition.color} drop-shadow-sm md:drop-shadow-lg float-animation"><\/i>
+            <span class="text-[9px] sm:text-[10px] font-semibold tracking-wide uppercase ${data.condition.color} bg-slate-100 md:bg-black/20 px-1.5 py-0.5 mt-0.5 rounded-full">${data.condition.text}<\/span>
+          <\/div>
+        <\/div>
+      <\/div>
+      
+      <div class="space-y-1.5 mt-auto">
+         <div class="flex justify-between items-end bg-[#F5F5F7] md:bg-slate-800/40 p-2 sm:p-1.5 rounded-lg border border-[#E5E5E5] md:border-slate-700/50 cursor-pointer hover:bg-[#EAEAEA] md:hover:bg-slate-700/70 transition-colors group/btn" onclick='showHistoryModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.dailyDates)}, ${JSON.stringify(data.dailyPrecips)}, ${JSON.stringify(data.historyHourlyTimes)}, ${JSON.stringify(data.historyHourlyPrecips)}, ${data.totalPrecip})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold group-hover/btn:text-[#1D1D1F] md:group-hover/btn:text-white transition-colors">${periodText} 누적 <i class="fa-solid fa-chevron-right text-[10px] ml-0.5 opacity-50 group-hover/btn:opacity-100"></i></span>
+          <div class="text-right flex items-baseline gap-1">
+             <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-blue-400 md:drop-shadow">${data.totalPrecip}<\/span>
+             <span class="text-xs sm:text-sm text-slate-400 md:text-slate-500 font-bold">mm<\/span>
+          <\/div>
+        <\/div>
+        
+        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn3" onclick='showNext24hModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.hourlyTimes)}, ${JSON.stringify(data.hourlyPrecips)}, ${JSON.stringify(data.hourlyAlerts)})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn3:text-[#1D1D1F] md:group-hover/btn3:text-white transition-colors whitespace-nowrap">
+            ${data.max24hAlert === 'red' ? `<i class="fa-solid fa-star text-red-500 fa-fade drop-shadow-[0_0_3px_rgba(239,68,68,0.8)]"></i>` : (data.max24hAlert === 'orange' ? `<i class="fa-solid fa-star text-orange-500 fa-fade drop-shadow-[0_0_3px_rgba(249,115,22,0.8)]"></i>` : `<i class="fa-regular fa-clock text-slate-400 md:text-slate-500 group-hover/btn3:text-sky-500"></i>`)}24시간 예상 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn3:opacity-100"></i>
+          </span>
+          <div class="text-right flex items-center justify-end gap-1.5">
+             ${data.max24hAlert === 'red' ? `<span class="bg-gradient-to-r from-red-400 to-red-600 border border-red-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(239,68,68,0.6)]">경보</span>` : (data.max24hAlert === 'orange' ? `<span class="bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(249,115,22,0.6)]">주의</span>` : '')}
+             <div class="flex items-baseline gap-1">
+               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-sky-400 md:drop-shadow">${data.next24hPrecip}</span>
+               <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+             </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center px-2 py-1.5 sm:py-1 sm:px-1.5 mt-1 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-800/60 rounded-lg -mx-1 transition-colors group/btn2" onclick='showFutureModal(${JSON.stringify(data.name)}, ${JSON.stringify(data.futureDates)}, ${JSON.stringify(data.futurePrecips)}, ${JSON.stringify(data.futureHourlyTimes)}, ${JSON.stringify(data.futureHourlyPrecips)}, ${JSON.stringify(data.futureHourlyAlerts)})'>
+          <span class="text-sm sm:text-base text-slate-500 md:text-slate-400 font-semibold flex items-center gap-1 group-hover/btn2:text-[#1D1D1F] md:group-hover/btn2:text-white transition-colors whitespace-nowrap">
+            <i class="fa-regular fa-calendar-days text-slate-400 md:text-slate-500 group-hover/btn2:text-blue-500 md:group-hover/btn2:text-amber-400/70"></i>10일 예상 <i class="fa-solid fa-chevron-right text-[10px] opacity-50 group-hover/btn2:opacity-100"></i>
+          </span>
+          <div class="text-right flex items-center justify-end gap-1.5">
+             ${data.max10dAlert === 'red' ? `<span class="bg-gradient-to-r from-red-400 to-red-600 border border-red-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(239,68,68,0.6)]">경보</span>` : (data.max10dAlert === 'orange' ? `<span class="bg-gradient-to-r from-orange-400 to-orange-600 border border-orange-300/50 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap shadow-[0_0_5px_rgba(249,115,22,0.6)]">주의</span>` : '')}
+             <div class="flex items-baseline gap-1">
+               <span class="text-xl sm:text-lg font-bold text-[#003366] md:text-amber-300 md:drop-shadow">${data.next10dPrecip}</span>
+               <span class="text-sm sm:text-base text-slate-400 md:text-slate-500 font-bold">mm</span>
+             </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    card.appendChild(innerContent);
+    grid.appendChild(card);
+  });
+}
+
+function findEmergencyPeriods(times, precips, nowMs) {
+    const n = times.length;
+    const allWindows = [];
+    
+    for (let i = 0; i < n; i++) {
+        // 3시간 누적 검사
+        let sum3 = 0;
+        let endIdx3 = Math.min(i + 2, n - 1);
+        for(let j = i; j <= endIdx3; j++) sum3 += precips[j];
+        if (sum3 >= 60) {
+            allWindows.push({ startIdx: i, endIdx: endIdx3, sum: sum3, type: sum3 >= 90 ? '경보' : '주의' });
+        }
+        
+        // 12시간 누적 검사
+        let sum12 = 0;
+        let endIdx12 = Math.min(i + 11, n - 1);
+        for(let j = i; j <= endIdx12; j++) sum12 += precips[j];
+        if (sum12 >= 110) {
+            allWindows.push({ startIdx: i, endIdx: endIdx12, sum: sum12, type: sum12 >= 180 ? '경보' : '주의' });
+        }
+    }
+    
+    // 우선순위 정렬 (경보 우선, 그 다음 누적 강수량 높은 순)
+    allWindows.sort((a, b) => {
+        if (a.type !== b.type) return a.type === '경보' ? -1 : 1;
+        return b.sum - a.sum;
+    });
+    
+    // 겹치지 않는 윈도우 선택
+    const selected = [];
+    for (const w of allWindows) {
+        let overlap = false;
+        for (const s of selected) {
+            if (w.startIdx <= s.endIdx && w.endIdx >= s.startIdx) {
+                overlap = true;
+                break;
+            }
+        }
+        if (!overlap) selected.push(w);
+    }
+    
+    // UI 표출을 위한 포맷팅
+    const results = [];
+    for (const s of selected) {
+        const startTimeStr = times[s.startIdx];
+        const endTimeStr = times[s.endIdx];
+        
+        const endMs = new Date(endTimeStr).getTime();
+        if (endMs < nowMs) continue; // 완전히 과거인 기간은 제외
+        
+        const startD = startTimeStr.split('T')[0];
+        const endD = endTimeStr.split('T')[0];
+        const dateDisplay = (startD !== endD) ? `${startD}~${endD.substring(5)}` : startD;
+        
+        const startT = startTimeStr.split('T')[1].substring(0, 5);
+        const endT = endTimeStr.split('T')[1].substring(0, 5);
+        const timeDisplay = `${startT}~${endT}`;
+        
+        results.push({
+            dateDisplay: dateDisplay,
+            timeDisplay: timeDisplay,
+            precip: s.sum,
+            type: s.type,
+            sortTime: new Date(startTimeStr).getTime()
+        });
+    }
+    return results;
+}
+
+function checkEmergencyRain(dataArray) {
+  const emergencyLogs = [];
+  const affectedLocations = new Set();
+  const now = Date.now();
+  
+  dataArray.forEach(loc => {
+    if (!loc.hourlyTimes || !loc.hourlyPrecips) return;
+    
+    const periods = findEmergencyPeriods(loc.hourlyTimes, loc.hourlyPrecips, now);
+    
+    periods.forEach(p => {
+        affectedLocations.add(loc.name);
+        emergencyLogs.push({
+            name: loc.name,
+            date: p.dateDisplay,
+            time: p.timeDisplay,
+            precip: p.precip,
+            type: p.type,
+            sortTime: p.sortTime
+        });
+    });
+  });
+  
+  if (emergencyLogs.length > 0) {
+    // 서명(Signature) 생성: 지역명:타입 기준으로 정렬
+    const signature = emergencyLogs.map(l => `${l.name}:${l.type}`).sort().join(',');
+    
+    // 로컬 스토리지 확인
+    const hideDate = localStorage.getItem('hideEmergencyDate');
+    const hideSignature = localStorage.getItem('hideEmergencySignature');
+    const todayStr = new Date().toDateString();
+    
+    if (hideDate === todayStr && hideSignature === signature) {
+      return; // 오늘 이미 확인했고, 상황(지역/위험수준)도 변하지 않았으므로 팝업 생략
+    }
+
+    const locsArray = Array.from(affectedLocations).join(', ');
+    document.getElementById('emergency-modal-title').innerHTML = `<i class="fa-solid fa-triangle-exclamation"><\/i> 긴급: ${locsArray}에 강한 호우 예상됨`;
+    
+    const tbody = document.getElementById('emergency-modal-tbody');
+    tbody.innerHTML = '';
+    
+    // 시간순 정렬
+    emergencyLogs.sort((a, b) => a.sortTime - b.sortTime);
+    
+    emergencyLogs.forEach(log => {
+      const badgeClass = log.type === '경보' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-orange-100 text-orange-700 border-orange-200';
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-4 py-3 font-bold text-slate-800">${log.name} <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded border ${badgeClass}">${log.type}</span></td>
+          <td class="px-4 py-3 text-slate-600">${log.date}</td>
+          <td class="px-4 py-3 text-slate-600">${log.time}</td>
+          <td class="px-4 py-3 text-right font-mono font-bold text-red-600">${Number(log.precip).toFixed(1)} <span class="text-xs text-slate-400 font-normal">mm</span></td>
+        </tr>
+      `;
+    });
+    
+    const modal = document.getElementById('emergency-modal');
+    
+    // 체크박스 초기화
+    const cb = document.getElementById('emergency-hide-today');
+    if (cb) cb.checked = false;
+    
+    modal.showModal();
+    
+    // 30초 카운트다운 자동 닫힘 로직 추가
+    let timeLeft = 10;
+    const timerSpan = document.getElementById('emergency-modal-timer');
+    
+    if (window._emergencyTimer) clearInterval(window._emergencyTimer);
+    if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
+    
+    window._emergencyTimer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            if (timerSpan) timerSpan.textContent = `(${timeLeft}s)`;
+        } else {
+            clearInterval(window._emergencyTimer);
+            if (modal.open) modal.close();
+        }
+    }, 1000);
+    
+    modal.addEventListener('close', () => {
+        if (window._emergencyTimer) clearInterval(window._emergencyTimer);
+        
+        const cb = document.getElementById('emergency-hide-today');
+        if (cb && cb.checked) {
+            localStorage.setItem('hideEmergencyDate', new Date().toDateString());
+            localStorage.setItem('hideEmergencySignature', signature);
+        }
+    }, { once: true });
+  }
+}
+</script>
+  <script>
+const holidays2026 = [
+  "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
+  "2026-03-01", "2026-05-05", "2026-05-24", "2026-06-06",
+  "2026-08-15", "2026-09-24", "2026-09-25", "2026-09-26",
+  "2026-10-03", "2026-10-09", "2026-12-25"
+];
+
+function getDayAndColor(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getDay())) {
+    return {
+      text: dateStr,
+      colorClass: 'text-[#1D1D1F] md:text-slate-300',
+      dayOfWeek: '',
+      dateColorClass: 'text-slate-600 md:text-slate-300'
+    };
+  }
+  
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  let dayOfWeek = days[d.getDay()];
+  let isHoliday = holidays2026.includes(dateStr);
+  
+  let colorClass = 'text-[#1D1D1F] md:text-slate-300';
+  let dateColorClass = 'text-slate-600 md:text-slate-300';
+  
+  if (isHoliday || d.getDay() === 0) {
+      colorClass = 'text-red-500 font-bold';
+      dateColorClass = 'text-red-500 font-bold';
+  } else if (d.getDay() === 6) {
+      colorClass = 'text-blue-500 font-bold';
+      dateColorClass = 'text-blue-500 font-bold md:text-blue-400';
+  }
+  
+  return { 
+    text: `${dateStr} (${dayOfWeek})`, 
+    colorClass,
+    dayOfWeek, 
+    dateColorClass 
+  };
+}
+
+// 4. 모달 관련 전역 함수
+window.toggleHourlyData = function(dateIndex) {
+  const el = document.getElementById(`hourly-row-${dateIndex}`);
+  if(el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+};
+
+function generateHourlyChart(dateStr, hourlyTimes, hourlyPrecips, colorTheme, hourlyAlerts) {
+  const barColor = colorTheme === 'future' ? 'bg-amber-400' : 'bg-blue-400';
+  const textColor = colorTheme === 'future' ? 'text-amber-400' : 'text-blue-400';
+  
+  const now = new Date();
+  const hoursData = [];
+  let maxPrecip = -1;
+  let maxIdx = -1;
+  
+  for(let i=0; i<hourlyTimes.length; i++) {
+    if(hourlyTimes[i].startsWith(dateStr)) {
+      const itemTime = new Date(hourlyTimes[i]);
+      
+      // 과거 강수내역 모달(history)의 경우: 오늘 날짜라면 현재 시각 이전까지만 표출
+      if (colorTheme === 'history' && itemTime > now) {
+        continue;
+      }
+      // 향후 10일 예상 모달(future)의 경우: 오늘 날짜라면 현재 시각 이후만 표출
+      if (colorTheme === 'future' && itemTime <= now) {
+        continue;
+      }
+      
+      const val = hourlyPrecips[i] || 0;
+      const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
+      hoursData.push({ time: hourlyTimes[i], val, alertType });
+      if(val > maxPrecip) { maxPrecip = val; maxIdx = hoursData.length - 1; }
+    }
+  }
+  
+  if(hoursData.length === 0) {
+    return `<div class="text-center text-xs text-slate-400 py-2">시간별 데이터가 없습니다.<\/div>`;
+  }
+  
+  let chartHtml = `<div class="flex overflow-x-auto gap-2 pb-2 pt-1 custom-scrollbar-hide snap-x">`;
+  hoursData.forEach((d, idx) => {
+    const isMax = (idx === maxIdx && maxPrecip > 0);
+    const hColor = isMax ? 'bg-red-500' : barColor;
+    const tColor = isMax ? 'text-red-500 font-bold' : 'text-slate-400 md:text-slate-500';
+    const valColor = isMax ? 'text-red-500 font-bold' : 'text-slate-600 md:text-slate-400';
+    
+    let hPx = 2;
+    if(maxPrecip > 0 && d.val > 0) {
+      hPx = Math.max(2, Math.floor((d.val / maxPrecip) * 36)); 
+    }
+    
+    const hourStr = d.time.substring(11, 16); 
+    const valStr = d.val > 0 ? d.val.toFixed(1) : '0';
+    
+    let badgeHtml = '';
+    if (d.alertType === 'red') badgeHtml = `<div class="text-[9px] bg-red-500 text-white px-1 rounded mb-0.5 whitespace-nowrap shadow-sm animate-pulse">경보</div>`;
+    else if (d.alertType === 'orange') badgeHtml = `<div class="text-[9px] bg-orange-500 text-white px-1 rounded mb-0.5 whitespace-nowrap shadow-sm">주의</div>`;
+
+    chartHtml += `
+      <div class="flex flex-col items-center justify-end min-w-[36px] snap-center">
+        ${badgeHtml}
+        <span class="text-[10px] mb-1 ${valColor}">${valStr}<\/span>
+        <div class="w-4 rounded-t-sm ${hColor}" style="height: ${hPx}px; transition: height 0.3s ease;"><\/div>
+        <span class="text-[9px] mt-1 ${tColor}">${hourStr}<\/span>
+      <\/div>
+    `;
+  });
+  chartHtml += `<\/div>`;
+  
+  if(maxPrecip > 0) {
+    const peakTime = hoursData[maxIdx].time.substring(11, 16);
+    chartHtml = `<div class="text-[11px] mb-2 text-red-500 font-bold tracking-tight"><i class="fa-solid fa-triangle-exclamation"><\/i> ${peakTime} 피크 집중 강수 (${maxPrecip.toFixed(1)}mm)<\/div>` + chartHtml;
+  }
+  return chartHtml;
+}
+
+
+window.showHistoryModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, total) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-blue-500 md:text-blue-400"><\/i> ${name} 과거 강수내역`;
+  document.getElementById('modal-total').innerText = total;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  dates.forEach((date, i) => {
+    const val = precips[i] !== null ? Number(precips[i]).toFixed(1) : '0.0';
+    const dateInfo = getDayAndColor(date);
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('hist-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-blue-500 transition-colors"><\/i> 
+          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>
+        <\/td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${Number(val) > 0 ? 'text-[#003366] md:text-blue-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${val}<\/td>
+      <\/tr>
+      <tr id="hourly-row-hist-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'history')}
+        <\/td>
+      <\/tr>
+    `;
+  });
+  document.getElementById('detail-modal').showModal();
+};
+
+window.showNext24hModal = function(name, hourlyTimes, hourlyPrecips, hourlyAlerts) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-regular fa-clock text-blue-500 md:text-sky-400"><\/i> ${name} 향후 24시간 예측`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> 기상청`;
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  
+  let sum = 0;
+  
+  let hasData = false;
+  
+  if (hourlyTimes && hourlyTimes.length > 0) {
+    hourlyTimes.forEach((t, i) => {
+      hasData = true;
+      const val = hourlyPrecips[i] !== null && hourlyPrecips[i] !== undefined ? Number(hourlyPrecips[i]) : 0;
+      sum += val;
+      const valStr = val.toFixed(1);
+      
+      // Extract hour string, e.g. "2023-01-01T15:00" -> "15:00"
+      const hourStr = t.substring(11, 16);
+      const dateStr = t.substring(5, 10).replace('-', '/'); // "01/01"
+      
+      let badgeHtml = '';
+      const alertType = (hourlyAlerts && hourlyAlerts[i]) ? hourlyAlerts[i] : 'none';
+      if (alertType === 'red') badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보<\/span>`;
+      else if (alertType === 'orange') badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의<\/span>`;
+      
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors">
+          <td class="px-4 py-3 sm:py-2.5 text-[#1D1D1F] md:text-slate-300 font-mono flex items-center">
+            <span class="text-xs text-slate-400 mr-2">${dateStr}<\/span>${hourStr}${badgeHtml}
+          <\/td>
+          <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-sky-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
+        <\/tr>
+      `;
+    });
+  }
+  
+  if (!hasData) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+  }
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
+  document.getElementById('detail-modal').showModal();
+};
+
+window.showFutureModal = function(name, dates, precips, hourlyTimes, hourlyPrecips, hourlyAlerts) {
+  document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-fast-forward text-blue-500 md:text-amber-400"><\/i> ${name} 향후 10일 강수예측`;
+  document.getElementById('modal-data-source').innerHTML = `<i class="fa-solid fa-circle-info"><\/i> Open-Meteo`;
+  const tbody = document.getElementById('modal-tbody');
+  tbody.innerHTML = '';
+  
+  let sum = 0;
+  
+  if (!dates || dates.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="text-center py-6 text-slate-400 text-sm">데이터가 없습니다.<\/td><\/tr>';
+    document.getElementById('modal-total').innerText = '0.0';
+    document.getElementById('detail-modal').showModal();
+    return;
+  }
+  
+  dates.forEach((date, i) => {
+    const val = precips[i] !== null ? Number(precips[i]) : 0;
+    sum += val;
+    const valStr = val.toFixed(1);
+    const dateInfo = getDayAndColor(date);
+    
+    // 해당 날짜의 시간별 최고 알림 레벨 계산
+    let maxAlert = 'none';
+    if (hourlyTimes && hourlyAlerts) {
+      for (let j = 0; j < hourlyTimes.length; j++) {
+        if (hourlyTimes[j].startsWith(date)) {
+          if (hourlyAlerts[j] === 'red') maxAlert = 'red';
+          else if (hourlyAlerts[j] === 'orange' && maxAlert !== 'red') maxAlert = 'orange';
+        }
+      }
+    }
+    
+    let badgeHtml = '';
+    if (maxAlert === 'red') {
+      badgeHtml = `<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2 animate-pulse">경보</span>`;
+    } else if (maxAlert === 'orange') {
+      badgeHtml = `<span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm shadow-sm ml-2">주의</span>`;
+    }
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-100 md:hover:bg-slate-700/30 transition-colors cursor-pointer group" onclick="toggleHourlyData('fut-${i}')">
+        <td class="px-4 py-3 sm:py-2.5 flex items-center gap-2">
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:text-amber-400 transition-colors"><\/i> 
+          <span class="${dateInfo.colorClass}">${dateInfo.text}<\/span>${badgeHtml}
+        <\/td>
+        <td class="px-4 py-3 sm:py-2.5 text-right font-mono ${val > 0 ? 'text-[#003366] md:text-amber-400 font-bold' : 'text-slate-400 md:text-slate-500'}">${valStr}<\/td>
+      <\/tr>
+      <tr id="hourly-row-fut-${i}" class="hidden bg-[#F8F8F8] md:bg-slate-900/50">
+        <td colspan="2" class="px-4 py-3 border-t border-[#E5E5E5] md:border-slate-700/50">
+          ${generateHourlyChart(date, hourlyTimes, hourlyPrecips, 'future', hourlyAlerts)}
+        <\/td>
+      <\/tr>
+    `;
+  });
+  
+  document.getElementById('modal-total').innerText = sum.toFixed(1);
+  document.getElementById('detail-modal').showModal();
+};
+
+// 4. Flatpickr 초기화 및 로직
+let isUserCustomDate = false;
+
+window.initApp = function() {
+  try {
+    initAppCore();
+  } catch (err) {
+    const indicator = document.getElementById('loading-indicator');
+    if (indicator) indicator.classList.add('hidden');
+    if (window.showToast) window.showToast('앱 초기화 오류: ' + err.message, true);
+    console.error('InitApp Error:', err);
+  }
+};
+
+function initAppCore() {
+  const today = new Date();
+  const resetBtn = document.getElementById('btn-auto-refresh-reset');
+  
+  // 기본값: 오늘 기준 최근 2일 (당일 기준 D-1)
+  const defaultStartDate = new Date(today);
+  defaultStartDate.setDate(defaultStartDate.getDate() - 1);
+  
+  // 최대 15일 이내 제한 설정 (구글 시트 과거 데이터 보존 기준)
+  const maxLimitDate = new Date(today);
+  maxLimitDate.setDate(maxLimitDate.getDate() - 15);
+  
+  const format = d => {
+     // 로컬 타임존 기준으로 yyyy-mm-dd 추출
+     const offset = d.getTimezoneOffset() * 60000;
+     const localISOTime = (new Date(d - offset)).toISOString().split('T')[0];
+     return localISOTime;
+  };
+  
+  let currentStart = format(defaultStartDate);
+  let currentEnd = format(today);
+
+  let startFp = flatpickr('#start-date', {
+    locale: 'ko',
+    defaultDate: currentStart,
+    minDate: maxLimitDate,
+    maxDate: today,
+    dateFormat: "Y-m-d",
+    onChange: function(selectedDates, dateStr, instance) {
+      if (selectedDates.length > 0) {
+        const start = selectedDates[0];
+        const maxLimit = new Date(start);
+        maxLimit.setDate(maxLimit.getDate() + 14);
+        
+        // 종료일의 최소 날짜는 시작일, 최대 날짜는 15일 이내
+        endFp.set('minDate', start);
+        endFp.set('maxDate', maxLimit < today ? maxLimit : today);
+      } else {
+        endFp.set('minDate', maxLimitDate);
+        endFp.set('maxDate', today);
+      }
+    }
+  });
+
+  let endFp = flatpickr('#end-date', {
+    locale: 'ko',
+    defaultDate: currentEnd,
+    minDate: currentStart, // 초기 로딩시에는 기본 시작일이 minDate
+    maxDate: today,
+    dateFormat: "Y-m-d",
+    onChange: function(selectedDates, dateStr, instance) {
+      if (selectedDates.length > 0) {
+        const end = selectedDates[0];
+        const minLimit = new Date(end);
+        minLimit.setDate(minLimit.getDate() - 14);
+        
+        // 시작일의 최대 날짜는 종료일, 최소 날짜는 15일 이내
+        startFp.set('maxDate', end);
+        startFp.set('minDate', minLimit > maxLimitDate ? minLimit : maxLimitDate);
+      } else {
+        startFp.set('maxDate', today);
+        startFp.set('minDate', maxLimitDate);
+      }
+    }
+  });
+
+  const searchBtn = document.getElementById('btn-search-date');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', async () => {
+      const sFp = document.querySelector('#start-date')?._flatpickr;
+      const eFp = document.querySelector('#end-date')?._flatpickr;
+      if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+        const sDate = sFp.selectedDates[0];
+        const eDate = eFp.selectedDates[0];
+        const diffDays = Math.ceil((eDate - sDate) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 14) {
+          if (window.showToast) window.showToast("조회 기간은 최대 15일 이내로 선택해주세요.", true);
+          return;
+        }
+        if (diffDays < 0) {
+          if (window.showToast) window.showToast("종료일이 시작일보다 앞설 수 없습니다.", true);
+          return;
+        }
+
+        isUserCustomDate = true;
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        
+        document.getElementById('loading-indicator').classList.remove('hidden');
+        const s = format(sFp.selectedDates[0]);
+        const e = format(eFp.selectedDates[0]);
+        const d = await fetchWeatherData(s, e);
+        if (d) renderCards(d, window.getPeriodText(s, e));
+      } else {
+        if(window.showToast) window.showToast("조회할 기간(시작일과 종료일)을 모두 선택해주세요.", true);
+      }
+    });
+  }
+
+  const dataSourceBtn = document.getElementById('btn-data-source');
+  const dataSourceModal = document.getElementById('data-source-modal');
+  const dataSourceCloseBtn = document.getElementById('data-source-modal-close-btn');
+
+  if (dataSourceBtn && dataSourceModal) {
+    dataSourceBtn.addEventListener('click', () => {
+      dataSourceModal.showModal();
+    });
+  }
+  if (dataSourceCloseBtn && dataSourceModal) {
+    dataSourceCloseBtn.addEventListener('click', () => {
+      dataSourceModal.close();
+    });
+  }
+
+  const refSitesBtn = document.getElementById('btn-reference-sites');
+  const refSitesModal = document.getElementById('reference-sites-modal');
+  const refSitesCloseBtn = document.getElementById('reference-sites-modal-close-btn');
+
+  if (refSitesBtn && refSitesModal) {
+    refSitesBtn.addEventListener('click', () => {
+      refSitesModal.showModal();
+    });
+  }
+  if (refSitesCloseBtn && refSitesModal) {
+    refSitesCloseBtn.addEventListener('click', () => {
+      refSitesModal.close();
+    });
+  }
+  
+  // 모달 바깥 배경 클릭 시 닫기
+  if (refSitesModal) {
+    refSitesModal.addEventListener('click', (e) => {
+      if (e.target === refSitesModal) {
+        refSitesModal.close();
+      }
+    });
+  }
+
+  const mapViewBtn = document.getElementById('btn-map-view');
+  if (mapViewBtn) {
+    mapViewBtn.addEventListener('click', () => {
+      // 기본 중심: 경기지역본부 (수원 근방)
+      window.showMapModal('경기도 중심', 37.2636, 127.0286);
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      isUserCustomDate = false;
+      resetBtn.classList.add('hidden');
+      
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 2);
+      
+      const s = format(dynamicStartDate);
+      const e = format(nowToday);
+      
+      const sFp = document.querySelector('#start-date')?._flatpickr;
+      const eFp = document.querySelector('#end-date')?._flatpickr;
+      if (sFp) sFp.setDate(s, false);
+      if (eFp) eFp.setDate(e, false);
+      
+      document.getElementById('loading-indicator').classList.remove('hidden');
+      const d = await fetchWeatherData(s, e, true);
+      if (d) renderCards(d, window.getPeriodText(s, e));
+    });
+  }
+
+  // 최초 로딩 시 API Call
+  fetchWeatherData(currentStart, currentEnd).then(d => { if(d) renderCards(d, window.getPeriodText(currentStart, currentEnd)); });
+
+  // 자동 갱신 (테스트를 위해 5초 단위로 설정 - 추후 30분으로 원복)
+  setInterval(async () => {
+    console.log('[Auto-Refresh] Fetching latest weather data...');
+    const sFp = document.querySelector('#start-date')?._flatpickr;
+    const eFp = document.querySelector('#end-date')?._flatpickr;
+    let s, e;
+    
+    if (isUserCustomDate && sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+      s = format(sFp.selectedDates[0]);
+      e = format(eFp.selectedDates[0]);
+    } else {
+      const nowToday = new Date();
+      const dynamicStartDate = new Date(nowToday);
+      dynamicStartDate.setDate(dynamicStartDate.getDate() - 1);
+      
+      s = format(dynamicStartDate);
+      e = format(nowToday);
+      
+      if (sFp) sFp.setDate(s, false);
+      if (eFp) eFp.setDate(e, false);
+    }
+    
+    document.getElementById('loading-indicator').classList.remove('hidden');
+    const d = await fetchWeatherData(s, e, true);
+    if (d) renderCards(d, window.getPeriodText(s, e));
+
+    // 지도가 열려있을 경우 지도 안의 데이터도 자동 갱신
+    const mapModal = document.getElementById('map-modal');
+    if (mapModal && mapModal.open) {
+      console.log('[Auto-Refresh] Updating map data...');
+      let currentCenter = [37.2636, 127.0286];
+      if (window._leafletMap) {
+         currentCenter = [window._leafletMap.getCenter().lat, window._leafletMap.getCenter().lng];
+      }
+      window.showMapModal('업데이트 됨', currentCenter[0], currentCenter[1]);
+    }
+  }, 1 * 60 * 1000); // 1분(60000ms)
+}
+
+// 비동기 스크립트 로드 시 DOMContentLoaded가 이미 발생했을 수 있으므로 상태 확인 후 실행
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+// ==========================================================
+// 서브지역(읍면동) 데이터 캐시에서 가져오기 및 모달 렌더링
+// ==========================================================
+window.openSubRegionModal = function(cityName) {
+  const modal = document.getElementById('sub-region-modal');
+  if(!modal) return;
+  document.getElementById('sub-region-modal-title').innerHTML = `<i class="fa-solid fa-map-location-dot text-blue-500"></i> ${cityName} 상세 기상데이터`;
+  
+  const loadingEl = document.getElementById('sub-region-loading');
+  const gridEl = document.getElementById('sub-region-grid');
+  
+  gridEl.innerHTML = '';
+  loadingEl.classList.remove('hidden');
+  modal.showModal();
+  
+  const sFp = document.querySelector('#start-date')?._flatpickr;
+  const eFp = document.querySelector('#end-date')?._flatpickr;
+  const today = new Date();
+  const format = d => {
+     const offset = d.getTimezoneOffset() * 60000;
+     return (new Date(d - offset)).toISOString().split('T')[0];
+  };
+  
+  let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
+  let e = format(today);
+  
+  if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+    s = format(sFp.selectedDates[0]);
+    e = format(eFp.selectedDates[0]);
+  }
+  
+  google.script.run
+    .withSuccessHandler(function(responseStr) {
+      loadingEl.classList.add('hidden');
+      try {
+        const data = JSON.parse(responseStr);
+        if (!data || data.length === 0) {
+          gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">${cityName}은(는) 관측소가 1개 뿐이므로, 읍면동 데이터가 없습니다.</div>`;
+          return;
+        }
+        
+        if (data.length === 1 && data[0].error) {
+          gridEl.innerHTML = `<div class="col-span-full text-center text-red-500 py-10">오류 발생: ${data[0].message}</div>`;
+          return;
+        }
+        
+        data.forEach(d => {
+          gridEl.innerHTML += `
+            <div class="bg-white md:bg-slate-800 rounded-xl p-4 shadow border border-[#E5E5E5] md:border-slate-700">
+              <h4 class="text-lg font-bold text-[#1D1D1F] md:text-slate-200 mb-3 border-b border-[#F0F0F0] md:border-slate-700 pb-2">${d.name}</h4>
+              <div class="space-y-2">
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">${window.getPeriodText(s, e)} 누적</span>
+                  <span class="font-bold text-[#003366] md:text-blue-400">${d.totalPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">향후 24시간 예상</span>
+                  <span class="font-bold text-[#003366] md:text-sky-400">${d.next24hPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-slate-500">향후 10일 예상</span>
+                  <span class="font-bold text-[#003366] md:text-amber-400">${d.next10dPrecip} <span class="text-xs font-normal text-slate-400">mm</span></span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        gridEl.innerHTML = `<div class="col-span-full text-center text-slate-500 py-10">데이터 파싱 중 오류가 발생했습니다.</div>`;
+      }
+    })
+    .withFailureHandler(function(err) {
+      loadingEl.classList.add('hidden');
+      gridEl.innerHTML = `<div class="col-span-full text-center text-red-500 py-10">서버 통신 실패: ${err.message}</div>`;
+    })
+    .getSubRegionDataFromCache(cityName, s, e);
+};
+
+// ==========================================================
+// 5. 지도 모달 제어 함수 (Leaflet.js 연동)
+// ==========================================================
+
+/** 지도 모달 닫기 */
+window.closeMapModal = function() {
+  const modal = document.getElementById('map-modal');
+  modal.close();
+  // 닫기 후 인스턴스 정리 (메모리 누수 방지)
+  if (window._leafletMap) {
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+};
+
+/**
+ * 지도 모달 열기 (91개 전 지점 강수량 데이터 마커 표시)
+ * @param {string} name  - 중심점(클릭한 지점)명
+ * @param {number} lat   - 중심점 위도
+ * @param {number} lon   - 중심점 경도
+ */
+window.showMapModal = function(name, lat, lon) {
+  // 1. 좌표 유효성 검사
+  if (lat == null || lon == null || isNaN(Number(lat)) || isNaN(Number(lon))) {
+    alert(`[불러오기 실패] ${name} 지점의 위치 좌표가 없어 지도를 표시할 수 없습니다.`);
+    return;
+  }
+
+  // 2. 모달 타이틀 갱신
+  document.getElementById('map-modal-title-text').textContent = `경기도 기상청 관측소 현황`;
+  document.getElementById('map-modal-info').textContent = document.getElementById('last-updated').innerText;
+
+  // 3. 지도 모달 열기
+  document.getElementById('map-modal').showModal();
+
+  // 4. 기존 인스턴스 제거 및 시점 기억
+  let currentZoom = 9;
+  let currentCenter = [lat, lon];
+  if (window._leafletMap) {
+    currentZoom = window._leafletMap.getZoom();
+    currentCenter = [window._leafletMap.getCenter().lat, window._leafletMap.getCenter().lng];
+    try { window._leafletMap.remove(); } catch(e) { /* ignore */ }
+    window._leafletMap = null;
+  }
+
+  // 5. 로딩 스피너 표시
+  const mapEl = document.getElementById('map-container');
+  mapEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; color:#94a3b8;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#059669;"></i>
+      <p style="font-size:12px; font-weight:500;">전 지점 기상 데이터를 불러오는 중...</p>
+    </div>
+  `;
+
+  // 날짜 계산 (선택 기간 강수량 필터용)
+  const sFp = document.querySelector('#start-date')?._flatpickr;
+  const eFp = document.querySelector('#end-date')?._flatpickr;
+  const today = new Date();
+  const format = d => {
+     const offset = d.getTimezoneOffset() * 60000;
+     return (new Date(d - offset)).toISOString().split('T')[0];
+  };
+  
+  let s = format(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000));
+  let e = format(today);
+  
+  if (sFp && eFp && sFp.selectedDates.length === 1 && eFp.selectedDates.length === 1) {
+    s = format(sFp.selectedDates[0]);
+    e = format(eFp.selectedDates[0]);
+  }
+
+  // 6. 서버로 전 지점 데이터 요청
+  google.script.run
+    .withSuccessHandler(function(responseStr) {
+      try {
+        const data = JSON.parse(responseStr);
+        mapEl.innerHTML = ''; // 로딩 스피너 제거
+
+        // 지도 생성
+        window._leafletMap = L.map('map-container', {
+          center: currentCenter,
+          zoom: currentZoom,
+          zoomControl: true,
+          scrollWheelZoom: true
+        });
+
+        // Google 위성 타일 레이어 (Hybrid: 위성 + 지명/도로명)
+        L.tileLayer('http://mt0.google.com/vt/lyrs=y&hl=kr&x={x}&y={y}&z={z}', {
+          maxZoom: 18,
+          attribution: '&copy; Google'
+        }).addTo(window._leafletMap);
+
+        // 주요 지점 전용 Pane 생성 (일반 마커보다 항상 위에 오도록 Z-Index 설정)
+        window._leafletMap.createPane('majorMarkerPane');
+        window._leafletMap.getPane('majorMarkerPane').style.zIndex = 610; // 일반 overlayPane은 400
+        
+        window._leafletMap.createPane('majorTooltipPane');
+        window._leafletMap.getPane('majorTooltipPane').style.zIndex = 660; // 일반 tooltipPane은 650
+
+        const MAJOR_CITIES = ['인천', '여주', '이천', '양평', '화성', '수원', '연천', '포천', '파주', '고양', '강화', /* '옹진', '백령도', */ '김포', '평택', '용인', '안성'];
+        
+        const majorLayer = L.layerGroup();
+        const subLayer = L.layerGroup();
+
+        // 91개 마커 추가
+        data.forEach(d => {
+          if (!d.lat || !d.lon) return;
+          
+          const isMajor = MAJOR_CITIES.includes(d.name);
+          const circleColor = isMajor ? '#e11d48' : '#3b82f6'; // 주요지점은 눈에 띄는 빨간/자주색
+          
+          const circleMarker = L.circleMarker([d.lat, d.lon], {
+            pane: isMajor ? 'majorMarkerPane' : 'overlayPane',
+            radius: isMajor ? 5 : 4,
+            color: '#ffffff',
+            weight: 1,
+            fillColor: circleColor,
+            fillOpacity: 0.9
+          });
+          
+          const titleColor = isMajor ? '#be123c' : '#334155';
+          const tooltipContent = `
+            <div class="custom-map-tooltip" style="font-family: 'Noto Sans KR', sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; white-space: nowrap;">
+              <div style="font-size: 13px; font-weight: 800; color: ${titleColor}; line-height: 1.4;">
+                [ ${d.name} ] 
+                <span style="color: #2563eb; margin-left: 2px;">${d.totalPrecip}</span><span style="color: #94a3b8; margin: 0 2px;">/</span><span style="color: #0284c7;">${d.next24hPrecip}</span><span style="color: #94a3b8; margin: 0 2px;">/</span><span style="color: #d97706;">${d.next10dPrecip}</span>
+              </div>
+              <div class="tooltip-detail" style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 6px; width: 100%;">
+                <table style="width: 100%; font-size: 11px; text-align: left; border-collapse: collapse;">
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">${window.getPeriodText(s, e)}</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #2563eb; font-weight: 700; text-align: right; padding-left: 8px;">${d.totalPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">24시간 예상</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #0284c7; font-weight: 700; text-align: right; padding-left: 8px;">${d.next24hPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; padding-right: 8px; font-weight: 500;">10일 예상</td>
+                    <td style="color: #94a3b8; width: 10px; text-align: center;">:</td>
+                    <td style="color: #d97706; font-weight: 700; text-align: right; padding-left: 8px;">${d.next10dPrecip} <span style="font-size: 9px; font-weight: normal; color: #94a3b8;">mm</span></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          `;
+          
+          circleMarker.bindTooltip(tooltipContent, { 
+            pane: isMajor ? 'majorTooltipPane' : 'tooltipPane',
+            permanent: true, 
+            interactive: true,
+            direction: 'bottom',
+            offset: [0, 5],
+            opacity: 0.95
+          });
+          
+          if (isMajor) {
+            majorLayer.addLayer(circleMarker);
+          } else {
+            subLayer.addLayer(circleMarker);
+          }
+        });
+
+        // 초기에는 주요 지점만 렌더링
+        majorLayer.addTo(window._leafletMap);
+        
+        // 줌 레벨에 따른 읍면동 마커 동적 토글 (임계치: 10)
+        const ZOOM_THRESHOLD = 10;
+        if (window._leafletMap.getZoom() >= ZOOM_THRESHOLD) {
+          window._leafletMap.addLayer(subLayer);
+        }
+        
+        window._leafletMap.on('zoomend', function() {
+          if (window._leafletMap.getZoom() >= ZOOM_THRESHOLD) {
+            if (!window._leafletMap.hasLayer(subLayer)) {
+              window._leafletMap.addLayer(subLayer);
+            }
+          } else {
+            if (window._leafletMap.hasLayer(subLayer)) {
+              window._leafletMap.removeLayer(subLayer);
+            }
+          }
+        });
+
+        window._leafletMap.invalidateSize();
+
+      } catch (err) {
+        console.error('[showMapModal] 데이터 렌더링 실패:', err);
+        mapEl.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;"></i>
+            <p style="font-size:13px; font-weight:600;">지도 렌더링에 실패했습니다.</p>
+          </div>
+        `;
+      }
+    })
+    .withFailureHandler(function(err) {
+      console.error('[showMapModal] 서버 통신 실패:', err);
+      mapEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:8px; color:#ef4444;">
+          <i class="fa-solid fa-wifi" style="font-size:2rem;"></i>
+          <p style="font-size:13px; font-weight:600;">데이터 통신에 실패했습니다.</p>
+          <p style="font-size:11px; color:#94a3b8;">${err.message}</p>
+        </div>
+      `;
+    })
+    .getAllMapDataFromCache(s, e);
+}
+
+window.toggleModalFullscreen = function() {
+  const modalBox = document.querySelector('#detail-modal > div');
+  const icon = document.getElementById('modal-fs-icon');
+  
+  modalBox.classList.toggle('modal-fullscreen');
+  
+  if (modalBox.classList.contains('modal-fullscreen')) {
+    icon.classList.remove('fa-expand');
+    icon.classList.add('fa-compress');
+  } else {
+    icon.classList.remove('fa-compress');
+    icon.classList.add('fa-expand');
+  }
+};
+
+// ==========================================================
+// 상단 티커 렌더링 로직 (무한 스크롤 애니메이션 지원)
+// ==========================================================
+window.renderTicker = function(dataArray) {
+  const tickerContainer = document.getElementById('weather-ticker-container');
+  const tickerContent = document.getElementById('weather-ticker-content');
+  if (!tickerContainer || !tickerContent) return;
+
+  const threshold = 5;
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  // 1. [향후 24시간] 데이터 수집
+  const next24hLocs = [];
+  dataArray.forEach(d => {
+      const precip = parseFloat(d.next24hPrecip) || 0;
+      if (precip >= threshold) {
+          let alertLevel = 'none';
+          if (d.max24hAlert === 'red') alertLevel = 'red';
+          else if (d.max24hAlert === 'orange') alertLevel = 'yellow'; // UI 노란색 별
+          
+          next24hLocs.push({ name: d.name, precip: precip, alertLevel: alertLevel });
+      }
+  });
+  
+  // [향후 24시간] 정렬
+  next24hLocs.sort((a, b) => {
+      const aWeight = a.alertLevel === 'red' ? 2 : (a.alertLevel === 'yellow' ? 1 : 0);
+      const bWeight = b.alertLevel === 'red' ? 2 : (b.alertLevel === 'yellow' ? 1 : 0);
+      if (aWeight !== bWeight) return bWeight - aWeight;
+      return b.precip - a.precip;
+  });
+
+  // 2. 10일 예보 날짜 집계 (내일 제외 - 아이디어 A)
+  // 내일 날짜 계산
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  // 로컬 시간 기준으로 내일 날짜 문자열 추출
+  const offset = tomorrow.getTimezoneOffset() * 60000;
+  const tomorrowStr = (new Date(tomorrow - offset)).toISOString().split('T')[0];
+
+  const dailyRainMap = {};
+  dataArray.forEach(d => {
+      if (!d.futureDates || !d.futurePrecips) return;
+      
+      const dailyAlerts = {}; 
+      if (d.futureHourlyTimes && d.futureHourlyAlerts) {
+          const n = d.futureHourlyTimes.length;
+          for (let i = 0; i < n; i++) {
+              const dateStr = d.futureHourlyTimes[i].split('T')[0];
+              if (!dailyAlerts[dateStr]) dailyAlerts[dateStr] = 'none';
+              
+              const alert = d.futureHourlyAlerts[i];
+              if (alert === 'red') {
+                  dailyAlerts[dateStr] = 'red';
+              } else if (alert === 'orange' && dailyAlerts[dateStr] !== 'red') {
+                  dailyAlerts[dateStr] = 'yellow';
+              }
+          }
+      }
+
+      d.futureDates.forEach((dateStr, idx) => {
+          const precip = d.futurePrecips[idx] || 0;
+          // 오늘 및 내일 날짜 스킵 (내일은 24시간에 포함되므로 제외)
+          if (dateStr <= tomorrowStr) return;
+          
+          if (!dailyRainMap[dateStr]) dailyRainMap[dateStr] = { locs: [], maxPrecip: 0, alertLevel: 'none' };
+          
+          if (precip >= threshold) {
+              const calculatedAlert = dailyAlerts[dateStr] || 'none';
+              dailyRainMap[dateStr].locs.push({ name: d.name, precip: precip, alertLevel: calculatedAlert });
+              
+              if (precip > dailyRainMap[dateStr].maxPrecip) {
+                  dailyRainMap[dateStr].maxPrecip = precip;
+              }
+              
+              if (calculatedAlert === 'red') {
+                  dailyRainMap[dateStr].alertLevel = 'red';
+              } else if (calculatedAlert === 'yellow' && dailyRainMap[dateStr].alertLevel !== 'red') {
+                  dailyRainMap[dateStr].alertLevel = 'yellow';
+              }
+          }
+      });
+  });
+
+  const dateKeys = Object.keys(dailyRainMap).sort();
+  dateKeys.forEach(dateStr => {
+      dailyRainMap[dateStr].locs.sort((a, b) => {
+          const aWeight = a.alertLevel === 'red' ? 2 : (a.alertLevel === 'yellow' ? 1 : 0);
+          const bWeight = b.alertLevel === 'red' ? 2 : (b.alertLevel === 'yellow' ? 1 : 0);
+          if (aWeight !== bWeight) return bWeight - aWeight;
+          return b.precip - a.precip;
+      });
+  });
+
+  // 3. HTML 문자열 생성
+  let tickerHtmlStr = '';
+  
+  // [향후 24시간] 파트 HTML 생성
+  if (next24hLocs.length > 0) {
+      let maxAlert24h = 'none';
+      if (next24hLocs.some(l => l.alertLevel === 'red')) maxAlert24h = 'red';
+      else if (next24hLocs.some(l => l.alertLevel === 'yellow')) maxAlert24h = 'yellow';
+      
+      let icon = '<i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md"></i>';
+      if (maxAlert24h === 'red') icon = '<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md"></i>';
+      else if (maxAlert24h === 'yellow') icon = '<i class="fa-solid fa-star text-yellow-500 drop-shadow-md"></i>';
+
+      const top3 = next24hLocs.slice(0, 3).map(l => {
+          let nameHtml = `<span class="font-bold">${l.name}</span>`;
+          if (l.alertLevel === 'red') nameHtml = `<span class="font-bold text-red-500">${l.name}(경보)</span>`;
+          else if (l.alertLevel === 'yellow') nameHtml = `<span class="font-bold text-yellow-500">${l.name}(주의)</span>`;
+          return `${nameHtml}(${l.precip.toFixed(1)}mm)`;
+      }).join(', ');
+      
+      let locText = `${top3} 등 <span class="font-bold text-blue-500 md:text-blue-400">${next24hLocs.length}개 지점</span>`;
+      tickerHtmlStr += `<span class="mx-4 inline-flex items-center"><span class="font-bold text-sky-400">${icon} [향후 24시간]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
+  }
+
+  // 일별 향후 예측 파트 HTML 생성
+  dateKeys.forEach((dateStr, idx) => {
+      let dayData = dailyRainMap[dateStr];
+      if (dayData.maxPrecip >= threshold) {
+          if (tickerHtmlStr !== '') {
+              tickerHtmlStr += `<span class="text-slate-300 md:text-slate-600 mx-1">|</span>`;
+          }
+          
+          let month = dateStr.substring(5, 7);
+          let day = dateStr.substring(8, 10);
+          
+          let { dayOfWeek, dateColorClass } = getDayAndColor(dateStr);
+          const mdStr = `${parseInt(month)}/${parseInt(day)}(${dayOfWeek})`;
+          
+          let locText = '';
+          const top3 = dayData.locs.slice(0, 3).map(l => {
+              let nameHtml = `<span class="font-bold">${l.name}</span>`;
+              if (l.alertLevel === 'red') nameHtml = `<span class="font-bold text-red-500">${l.name}(경보)</span>`;
+              else if (l.alertLevel === 'yellow') nameHtml = `<span class="font-bold text-yellow-500">${l.name}(주의)</span>`;
+              return `${nameHtml}(${l.precip.toFixed(1)}mm)`;
+          }).join(', ');
+          locText = `${top3} 등 <span class="font-bold text-blue-500 md:text-blue-400">${dayData.locs.length}개 지점</span>`;
+          
+          let icon = '<i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md"></i>';
+          if (dayData.alertLevel === 'red') {
+              icon = '<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md"></i>';
+          } else if (dayData.alertLevel === 'yellow') {
+              icon = '<i class="fa-solid fa-star text-yellow-500 drop-shadow-md"></i>';
+          }
+
+          tickerHtmlStr += `<span class="mx-4 inline-flex items-center"><span class="${dateColorClass}">${icon} [${mdStr}]</span> <span class="text-slate-600 md:text-slate-200 ml-1.5">${locText}</span></span>`;
+      }
+  });
+
+  const startMarker = `<span class="text-slate-400 ml-4 mr-2">예보(<i class="fa-solid fa-star text-red-500 animate-pulse drop-shadow-md mx-1"></i>: 경보급, <i class="fa-solid fa-star text-yellow-500 drop-shadow-md mx-1"></i>: 주의보급, <i class="fa-solid fa-circle text-white md:text-slate-100 drop-shadow-md mx-1"></i>: 보통)</span>`;
+
+  if (tickerHtmlStr === '') {
+      tickerContent.innerHTML = `<div class="ticker-track inline-flex items-center justify-center w-full">${startMarker}<i class="fa-solid fa-sun text-yellow-500 mx-2"></i> 향후 우천 예보가 없습니다.</div>`;
+      tickerContainer.style.display = 'block';
+      if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);
+      const track = document.querySelector('#weather-ticker-content .ticker-track');
+      if(track) track.style.transform = 'none';
+  } else {
+      const separator = `<span class="text-slate-300 md:text-slate-600 mx-8">/</span>`;
+      tickerContent.innerHTML = `<div class="ticker-track inline-flex items-center">${startMarker}${separator}${tickerHtmlStr}${separator}${startMarker}${separator}${tickerHtmlStr}</div>`;
+      tickerContainer.style.display = 'block';
+      
+      if (window._tickerRAF) cancelAnimationFrame(window._tickerRAF);
+      setTimeout(() => {
+          const track = document.querySelector('#weather-ticker-content .ticker-track');
+          const dragArea = document.getElementById('weather-ticker-drag-area');
+          if (!track || !dragArea) return;
+          
+          let offset = 0;
+          let isDragging = false;
+          let startX = 0;
+          let startOffset = 0;
+          const speed = 0.7; // 속도 70% 줄임
+          
+          let contentWidth = track.scrollWidth / 2;
+          
+          dragArea.onmousedown = (e) => {
+              isDragging = true;
+              startX = e.pageX;
+              startOffset = offset;
+          };
+          dragArea.onmousemove = (e) => {
+              if (!isDragging) return;
+              e.preventDefault();
+              offset = startOffset + (e.pageX - startX);
+          };
+          const endDrag = () => { isDragging = false; };
+          dragArea.onmouseup = endDrag;
+          dragArea.onmouseleave = endDrag;
+          
+          dragArea.ontouchstart = (e) => {
+              isDragging = true;
+              startX = e.touches[0].pageX;
+              startOffset = offset;
+          };
+          dragArea.ontouchmove = (e) => {
+              if (!isDragging) return;
+              offset = startOffset + (e.touches[0].pageX - startX);
+          };
+          dragArea.ontouchend = endDrag;
+          
+          function animateTicker() {
+              if (!isDragging) offset -= speed;
+              if (contentWidth > 0) {
+                  if (offset <= -contentWidth) offset += contentWidth;
+                  else if (offset > 0) offset -= contentWidth;
+              }
+              track.style.transform = `translateX(${offset}px)`;
+              window._tickerRAF = requestAnimationFrame(animateTicker);
+          }
+          animateTicker();
+      }, 100);
+  }
+};
+</script>
+
 </body>
+
 </html>
