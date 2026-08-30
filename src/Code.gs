@@ -1302,10 +1302,76 @@ function extractKmaFcst24h(data) {
 
 
 function doGet(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+
+  // ---------------------------------------------------------------
+  // 데이터 조회 엔드포인트.
+  // 정적 화면이 Cloud Function 프록시를 통해 호출한다.
+  // action 파라미터가 없으면 기존과 동일하게 대시보드 화면을 반환한다.
+  // ---------------------------------------------------------------
+  if (p.action) {
+    var json = null;
+
+    if (p.action === 'latestJson') {
+      json = getLatestJsonForDefaultView();
+    } else if (p.action === 'merged') {
+      json = getMergedWeatherData(p.lats, p.lons, p.cities, p.matches, p.start, p.end);
+    } else if (p.action === 'subRegion') {
+      json = getSubRegionDataFromCache(p.city, p.start, p.end);
+    } else if (p.action === 'mapData') {
+      json = getAllMapDataFromCache(p.start, p.end);
+    } else {
+      json = JSON.stringify({ error: 'UNKNOWN_ACTION', message: '알 수 없는 action: ' + p.action });
+    }
+
+    return ContentService.createTextOutput(json)
+        .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createTemplateFromFile('index').evaluate()
       .setTitle('경기 기상상황실')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * 프론트엔드 첫 화면 기본 조회기간(어제~오늘)에 해당하는 병합 데이터를 JSON으로 반환.
+ * GitHub Actions가 주기적으로 이 엔드포인트를 호출해 정적 JSON을 저장소에 커밋하는 데 사용.
+ */
+function getLatestJsonForDefaultView() {
+  const DEFAULT_LOCATIONS = [
+    { name: '인천', lat: 37.4777, lon: 126.6249 },
+    { name: '여주', lat: 37.2917, lon: 127.6372 },
+    { name: '이천', lat: 37.2640, lon: 127.4842 },
+    { name: '양평', lat: 37.4886, lon: 127.4944 },
+    { name: '화성', lat: 37.1651, lon: 126.8285 },
+    { name: '수원', lat: 37.2574, lon: 126.9830 },
+    { name: '연천', lat: 38.0964, lon: 127.0744 },
+    { name: '포천', lat: 37.8949, lon: 127.2003 },
+    { name: '파주', lat: 37.8859, lon: 126.7661 },
+    { name: '고양', lat: 37.6401, lon: 126.8322 },
+    { name: '강화', lat: 37.7074, lon: 126.4463 },
+    { name: '김포', lat: 37.6049, lon: 126.7151 },
+    { name: '평택', lat: 36.9926, lon: 127.1129 },
+    { name: '용인', lat: 37.2411, lon: 127.1774 },
+    { name: '안성', lat: 37.0116, lon: 127.2758 }
+  ];
+
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const pad = function(n) { return n < 10 ? '0' + n : n; };
+  const fmt = function(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+
+  const lats = DEFAULT_LOCATIONS.map(l => l.lat).join(',');
+  const lons = DEFAULT_LOCATIONS.map(l => l.lon).join(',');
+  const names = DEFAULT_LOCATIONS.map(l => l.name).join(',');
+
+  const payloadStr = getMergedWeatherData(lats, lons, names, names, fmt(yesterday), fmt(now));
+  const payload = JSON.parse(payloadStr);
+  const lastUpdated = (payload && payload[0] && payload[0].lastUpdated) || null;
+
+  return JSON.stringify({ payload: payload, lastUpdated: lastUpdated, generatedAt: now.toISOString() });
 }
 
 function include(filename) {
