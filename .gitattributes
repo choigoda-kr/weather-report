@@ -1,0 +1,4 @@
+# assets/ 는 외부에서 받아온 파일을 그대로 보관한다.
+# git 의 줄바꿈 자동 변환이 끼어들면 upstream 원본과 바이트가 달라져,
+# 나중에 재수집(cloud/fetch-assets.js)했을 때 실제 변경이 없는데도 차이가 생긴다.
+assets/** -text

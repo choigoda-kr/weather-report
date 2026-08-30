@@ -29,6 +29,11 @@ const adapter = fs.readFileSync(path.join(SHIM, 'api-adapter.html'), 'utf8');
 let replaced = 0;
 let adapterInjected = false;
 
+// 지도 지연 로딩 shim 은 showMapModal 이 정의된 뒤에 실행되어야 하므로
+// 마지막 스크립트인 JS_UI 뒤에 붙인다.
+const mapLazy = fs.readFileSync(path.join(SHIM, 'map-lazy.html'), 'utf8');
+let mapLazyInjected = false;
+
 for (const name of INCLUDES) {
   // <?!= include('Stylesheet'); ?> 형태. 공백 변형을 허용한다.
   const pattern = new RegExp("<\\?!=\\s*include\\(\\s*'" + name + "'\\s*\\)\\s*;?\\s*\\?>", 'g');
@@ -37,6 +42,10 @@ for (const name of INCLUDES) {
     if (name === 'JS_Data') {
       adapterInjected = true;
       return adapter + '\n' + read(name + '.html');
+    }
+    if (name === 'JS_UI') {
+      mapLazyInjected = true;
+      return read(name + '.html') + '\n' + mapLazy;
     }
     return read(name + '.html');
   });
@@ -47,6 +56,52 @@ for (const name of INCLUDES) {
 if (!adapterInjected) {
   console.error('[오류] 어댑터를 주입하지 못했습니다.');
   process.exit(1);
+}
+if (!mapLazyInjected) {
+  console.error('[오류] 지도 지연 로딩 shim 을 주입하지 못했습니다.');
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------
+// 외부 CDN 자산을 저장소 안(assets/)의 파일로 바꾼다.
+//
+// 원본은 부품을 남의 서버 5곳에서 받아온다. 도메인마다 주소 조회와
+// 보안 연결 절차를 새로 거치므로 첫 로딩이 그만큼 늦어지고,
+// 그 중 한 곳만 장애가 나거나 차단돼도 화면이 깨진다.
+// flatpickr 주소는 버전조차 고정돼 있지 않아 저쪽 배포가 그대로 들어온다.
+//
+// 화면 원본(src/)은 GAS용으로 그대로 두고, 여기 빌드 단계에서만 바꾼다.
+// ---------------------------------------------------------------
+const ASSET_SWAPS = [
+  // [화면에서 찾을 문자열, 바꿔 넣을 값, 설명]
+  ['https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css', './assets/flatpickr.min.css', '달력 CSS'],
+  ['https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js',        './assets/flatpickr-ko.js',   '달력 한국어'],
+  ['https://cdn.jsdelivr.net/npm/flatpickr',                        './assets/flatpickr.min.js',  '달력 JS'],
+  ['https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css', './assets/icons.css', '아이콘 CSS']
+];
+
+for (const [from, to, label] of ASSET_SWAPS) {
+  if (!html.includes(from)) {
+    console.error(`[오류] ${label} 주소를 찾지 못했습니다: ${from}`);
+    process.exit(1);
+  }
+  html = html.split(from).join(to);
+}
+
+// 지도(Leaflet)와 한글 글꼴은 MAP 모달에서만 쓰이므로 첫 로딩에서 뺀다.
+// 실제로 필요한 시점에 map-lazy shim 이 불러온다.
+const DEFERRED_TAGS = [
+  [/\s*<link rel="stylesheet" href="https:\/\/unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.css"\s*\/?>/, '지도 CSS'],
+  [/\s*<script src="https:\/\/unpkg\.com\/leaflet@1\.9\.4\/dist\/leaflet\.js"><\/script>/, '지도 JS'],
+  [/\s*<link href="https:\/\/fonts\.googleapis\.com\/css2\?family=Noto\+Sans\+KR[^"]*" rel="stylesheet">/, '한글 글꼴']
+];
+
+for (const [pattern, label] of DEFERRED_TAGS) {
+  if (!pattern.test(html)) {
+    console.error(`[오류] ${label} 태그를 찾지 못했습니다. 원본 구조를 확인하십시오.`);
+    process.exit(1);
+  }
+  html = html.replace(pattern, `\n  <!-- ${label}: MAP 모달을 열 때 불러옵니다 -->`);
 }
 
 // ---------------------------------------------------------------
@@ -75,17 +130,12 @@ if (/window\.location\.replace\s*\(\s*["']https:\/\/script\.google\.com/.test(ht
 //   - 아이콘 폰트 preload : CSS 해석을 기다리지 않고 바로 받기 시작
 // ---------------------------------------------------------------
 const SNAPSHOT_URL = 'https://storage.googleapis.com/weather-report-507023-data/weather-latest.json';
-const FA_FONT = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2';
 
+// 부품이 모두 같은 주소에서 오므로 예열할 외부 도메인은 데이터 쪽 하나만 남는다.
 const PERF_HINTS = `
-  <!-- 첫 로딩 가속: 외부 도메인 연결 예열 -->
+  <!-- 첫 로딩 가속: 데이터 도메인 연결 예열 -->
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="font" type="font/woff2" href="${FA_FONT}" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="./assets/icons.woff2" crossorigin>
   <script>
     // 데이터 요청을 가장 먼저 시작해 자산 다운로드와 겹치게 한다.
     // 어댑터가 이 진행 중인 요청을 그대로 재사용한다.

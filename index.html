@@ -3,14 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <!-- 첫 로딩 가속: 외부 도메인 연결 예열 -->
+  <!-- 첫 로딩 가속: 데이터 도메인 연결 예열 -->
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="font" type="font/woff2" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="./assets/icons.woff2" crossorigin>
   <script>
     // 데이터 요청을 가장 먼저 시작해 자산 다운로드와 겹치게 한다.
     // 어댑터가 이 진행 중인 요청을 그대로 재사용한다.
@@ -35,11 +30,11 @@
       return false;
     };
   </script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="./assets/flatpickr.min.css">
   <!-- Leaflet.js (지도 연동) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- 지도 CSS: MAP 모달을 열 때 불러옵니다 -->
+  <link rel="stylesheet" href="./assets/icons.css">
+  <!-- 한글 글꼴: MAP 모달을 열 때 불러옵니다 -->
   <!-- 데이터 출처 안내 모달 팝업 -->
   <dialog id="data-source-modal"
     class="bg-transparent m-auto inset-0 z-[9999] backdrop:bg-black/50 md:backdrop:bg-slate-900/80 backdrop:backdrop-blur-sm open:flex open:flex-col items-center justify-center p-4">
@@ -437,9 +432,9 @@
     </button>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./assets/flatpickr.min.js"></script>
+  <script src="./assets/flatpickr-ko.js"></script>
+  <!-- 지도 JS: MAP 모달을 열 때 불러옵니다 -->
 
 
   <style>
@@ -2698,6 +2693,94 @@ window.renderTicker = function(dataArray) {
       }, 100);
   }
 };
+</script>
+
+<script>
+/**
+ * 지도 자산 지연 로딩
+ *
+ * Leaflet(약 160KB)은 MAP 모달 안에서만 쓰인다. 그런데 원본 화면은 이를
+ * 첫 로딩에 무조건 받아, 지도를 한 번도 열지 않는 대표님도 그 비용을 치른다.
+ * 여기서는 MAP을 실제로 누르는 순간에만 받도록 미룬다.
+ *
+ * 화면 코드(JS_UI)는 건드리지 않는다. 이미 정의된 showMapModal 을 감싸서
+ * 자산이 준비된 뒤에 원래 함수를 그대로 호출한다.
+ *
+ * 지도 툴팁이 쓰는 Noto Sans KR 도 같은 시점에 불러온다.
+ * 첫 화면에는 이 글꼴을 쓰는 요소가 없으므로 모양은 달라지지 않는다.
+ */
+(function () {
+  'use strict';
+
+  var MAP_ASSETS = {
+    css: ['./assets/leaflet.css',
+          'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap'],
+    js:  ['./assets/leaflet.js']
+  };
+
+  var pending = null;
+
+  function loadCss(href) {
+    return new Promise(function (resolve) {
+      var el = document.createElement('link');
+      el.rel = 'stylesheet';
+      el.href = href;
+      // 스타일이 늦어도 지도 자체는 뜨므로, 실패해도 진행을 막지 않는다.
+      el.onload = el.onerror = function () { resolve(); };
+      document.head.appendChild(el);
+    });
+  }
+
+  function loadJs(src) {
+    return new Promise(function (resolve, reject) {
+      var el = document.createElement('script');
+      el.src = src;
+      el.onload = function () { resolve(); };
+      el.onerror = function () { reject(new Error(src + ' 불러오기 실패')); };
+      document.head.appendChild(el);
+    });
+  }
+
+  function ensureMapAssets() {
+    if (window.L && window.L.map) return Promise.resolve();
+    if (pending) return pending;
+    pending = Promise.all(MAP_ASSETS.css.map(loadCss))
+      .then(function () { return Promise.all(MAP_ASSETS.js.map(loadJs)); })
+      .then(function () {
+        if (!window.L || !window.L.map) throw new Error('지도 라이브러리를 초기화하지 못했습니다.');
+      })
+      .catch(function (err) {
+        pending = null; // 다음 클릭 때 다시 시도할 수 있게 한다.
+        throw err;
+      });
+    return pending;
+  }
+
+  var original = window.showMapModal;
+  if (typeof original !== 'function') {
+    console.error('[지도 지연 로딩] showMapModal 을 찾지 못해 적용하지 않았습니다.');
+    return;
+  }
+
+  window.showMapModal = function () {
+    var args = arguments;
+    ensureMapAssets().then(function () {
+      original.apply(this, args);
+    }).catch(function (err) {
+      console.error('[지도 지연 로딩]', err);
+      alert('지도를 불러오지 못했습니다. 잠시 후 다시 눌러 주십시오.');
+    });
+  };
+
+  // 대표님이 MAP을 누르실 가능성이 높으므로, 화면이 다 뜬 뒤 한가할 때 미리 받아 둔다.
+  // 첫 화면 표출에는 영향을 주지 않으면서 첫 클릭의 대기 시간을 없앤다.
+  var warm = function () { ensureMapAssets().catch(function () {}); };
+  if ('requestIdleCallback' in window) {
+    window.addEventListener('load', function () { requestIdleCallback(warm, { timeout: 5000 }); });
+  } else {
+    window.addEventListener('load', function () { setTimeout(warm, 2000); });
+  }
+})();
 </script>
 
 </body>
