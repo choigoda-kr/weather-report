@@ -146,6 +146,9 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
             serverLastUpdated = results[0].lastUpdated;
         }
     }
+    // 축약된 응답을 원래 모양으로 되돌린다. 이 아래 처리 코드는 영향을 받지 않는다.
+    results = expandMergedPayload(results);
+
     // 캐시별 갱신 시각 상세는 항상 payload 원소에 실려 온다.
     if (results && results.length > 0 && results[0].lastUpdatedDetail) {
         serverLastUpdatedDetail = results[0].lastUpdatedDetail;
@@ -420,6 +423,68 @@ async function fetchWeatherData(startDateStr, endDateStr, forceRefresh = false) 
     window.showToast('데이터 로드 실패 (GAS 환경 확인 요망)', true);
     return null;
   }
+}
+
+// ==========================================================
+// 축약 응답 복원
+//
+// 서버는 캐시(항목당 100KB)에 담기도록 응답을 줄여 보낸다.
+// 값은 그대로이고, 지점마다 240번씩 반복되던 시각 키만 접어 보낸다.
+// 여기서 원래 모양으로 되돌리므로, 이 아래 처리 코드는 아무 영향을 받지 않는다.
+// ==========================================================
+
+// 시각 라벨 계산 전용. 표준시 해석이 아니라 문자열 계산이 목적이므로 UTC로 다룬다.
+// 브라우저 시간대나 서머타임과 무관하게 서버와 같은 결과가 나온다.
+function _labelToMs(s) {
+  return Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13));
+}
+function _msToLabel(ms, suffix) {
+  const d = new Date(ms);
+  const p = n => (n < 10 ? '0' + n : '' + n);
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate())
+       + 'T' + p(d.getUTCHours()) + suffix;
+}
+
+/** { t0, v } → 시각을 키로 갖는 원래 객체 */
+function expandHourly(c) {
+  const out = {};
+  if (!c || !c.t0 || !Array.isArray(c.v)) return out;
+  const suffix = c.t0.slice(13);
+  const base = _labelToMs(c.t0);
+  for (let i = 0; i < c.v.length; i++) {
+    out[_msToLabel(base + i * 3600000, suffix)] = c.v[i];
+  }
+  return out;
+}
+
+/** 응답 배열을 원래 모양으로 되돌린다. 축약되지 않은 응답은 그대로 통과시킨다. */
+function expandMergedPayload(arr) {
+  if (!Array.isArray(arr)) return arr;
+  let meta = null;
+
+  for (let i = 0; i < arr.length; i++) {
+    const d = arr[i];
+    if (!d || typeof d !== 'object') continue;
+
+    if (d.f10c) { d.forecast10dHourly = expandHourly(d.f10c); delete d.f10c; }
+    if (d.f24c) { d.forecast24h = expandHourly(d.f24c); delete d.f24c; }
+
+    if (d.hhtc && Array.isArray(d.hhtc.o)) {
+      const suffix = d.hhtc.t0.slice(13);
+      const base = _labelToMs(d.hhtc.t0);
+      d.historyHourlyTimes = d.hhtc.o.map(n => _msToLabel(base + n * 3600000, suffix));
+      delete d.hhtc;
+    }
+
+    // 갱신 시각은 첫 지점에만 실려 온다. 나머지 지점에 다시 채워 넣는다.
+    if (i === 0) {
+      meta = { lastUpdated: d.lastUpdated, lastUpdatedDetail: d.lastUpdatedDetail };
+    } else if (meta) {
+      if (d.lastUpdated === undefined) d.lastUpdated = meta.lastUpdated;
+      if (d.lastUpdatedDetail === undefined) d.lastUpdatedDetail = meta.lastUpdatedDetail;
+    }
+  }
+  return arr;
 }
 
 // 'YYYY-MM-DD HH:MM:SS'(한국시각) 문자열을 Date 로 바꾼다. 형식이 아니면 null.

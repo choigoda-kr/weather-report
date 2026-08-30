@@ -1004,16 +1004,115 @@ function getLiveAlerts() {
   return alertMap;
 }
 
+/**
+ * 시각 문자열에서 연·월·일·시를 뽑아 UTC 기준 밀리초로 바꾼다.
+ * 표준시 해석이 아니라 "라벨 계산"이 목적이므로 UTC로 다룬다.
+ * 이렇게 하면 서버·브라우저의 시간대나 서머타임과 무관하게 같은 결과가 나온다.
+ */
+function _labelToMs(s) {
+  return Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13));
+}
+
+/** _labelToMs 의 역방향. suffix 는 't0' 의 13번째 글자 이후를 그대로 쓴다. */
+function _msToLabel(ms, suffix) {
+  const d = new Date(ms);
+  const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+  return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate())
+       + 'T' + p(d.getUTCHours()) + suffix;
+}
+
+/**
+ * 시각을 키로 갖는 객체를 { t0, v } 로 축약한다.
+ *
+ * 축약해도 되는지 여기서 스스로 확인한다. 키가 1시간 간격으로 빈틈없이
+ * 이어지고, 시작 시각에서 되짚어 만든 라벨이 원래 키와 한 글자도 다르지
+ * 않을 때만 축약한다. 하나라도 어긋나면 null 을 돌려주어 원본을 그대로 둔다.
+ * 화면에서 복원한 결과가 원본과 다를 수 없도록 만드는 장치다.
+ */
+function _compactHourly(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const ks = Object.keys(obj).sort();
+  if (ks.length === 0) return null;
+
+  const t0 = ks[0];
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}/.test(t0)) return null;
+  const suffix = t0.slice(13);
+  const base = _labelToMs(t0);
+
+  for (let i = 0; i < ks.length; i++) {
+    if (_msToLabel(base + i * 3600000, suffix) !== ks[i]) return null;
+  }
+  return { t0: t0, v: ks.map(function (k) { return obj[k]; }) };
+}
+
+/**
+ * 응답 축약
+ *
+ * Apps Script 의 CacheService 는 항목당 100KB 까지만 저장한다.
+ * 15지점 응답은 122KB(기본 조회)라 저장이 조용히 실패해, 코드에 있는
+ * 600초 캐시가 실제로는 한 번도 쓰이지 못하고 매 요청이 처음부터 계산됐다.
+ *
+ * 용량의 대부분은 값이 아니라 '2026-08-30T00:00' 같은 시각 키가 지점마다
+ * 240번씩 반복되는 데서 나온다. 예보 시각은 1시간 간격으로 빈틈없이
+ * 이어지므로, 시작 시각 하나와 값 배열만 보내면 화면에서 똑같이 복원된다.
+ * 과거 관측 시각은 관측소 장애로 빠지는 시간이 있어 간격이 일정하지 않으므로,
+ * 시작 시각으로부터의 '시간 오프셋' 목록으로 보낸다.
+ *
+ * 값은 하나도 바꾸지 않는다. 표현만 줄이며, 화면이 복원하면 원본과 동일하다.
+ */
+function _compactMerged(arr) {
+  for (let i = 0; i < arr.length; i++) {
+    const d = arr[i];
+    if (!d || typeof d !== 'object') continue;
+
+    // 1) 10일 시간별 예보 — 연속 구간이므로 시작 시각 + 값 배열
+    const c10 = _compactHourly(d.forecast10dHourly);
+    if (c10) { d.f10c = c10; delete d.forecast10dHourly; }
+
+    // 2) 24시간 예보 — 같은 방식. 키에 '+09:00' 이 붙어 있어도 그대로 복원된다.
+    //    precip_hourly 형태로 오는 경우는 시각 키 구조가 아니므로 건드리지 않는다.
+    if (d.forecast24h && !d.forecast24h.precip_hourly) {
+      const c24 = _compactHourly(d.forecast24h);
+      if (c24) { d.f24c = c24; delete d.forecast24h; }
+    }
+
+    // 3) 과거 관측 시각 — 결측이 있으므로 시작 시각 + 시간 오프셋 목록
+    if (Array.isArray(d.historyHourlyTimes) && d.historyHourlyTimes.length > 0) {
+      const t0 = d.historyHourlyTimes[0];
+      const base = _labelToMs(t0);
+      d.hhtc = {
+        t0: t0,
+        o: d.historyHourlyTimes.map(function (t) { return Math.round((_labelToMs(t) - base) / 3600000); })
+      };
+      delete d.historyHourlyTimes;
+    }
+
+    // 4) 갱신 시각은 지점마다 같은 값이 15번 반복된다. 화면은 첫 지점 것만 읽는다.
+    if (i > 0) {
+      delete d.lastUpdated;
+      delete d.lastUpdatedDetail;
+    }
+  }
+  return arr;
+}
+
 function getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr) {
     const cache = CacheService.getScriptCache();
     const cacheKey = "merged_" + Utilities.base64EncodeWebSafe(latStr + cityStr + startDateStr + endDateStr).substring(0, 200);
     let resultStr = cache.get(cacheKey);
-    
+
     if (!resultStr) {
-        resultStr = _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr);
+        const rawStr = _getMergedWeatherData(latStr, lonStr, cityStr, matchNameStr, startDateStr, endDateStr);
+        try {
+            const parsed = JSON.parse(rawStr);
+            resultStr = Array.isArray(parsed) ? JSON.stringify(_compactMerged(parsed)) : rawStr;
+        } catch (e) {
+            // 오류 응답 등 배열이 아닌 경우에는 손대지 않고 그대로 보낸다.
+            resultStr = rawStr;
+        }
         try { if (resultStr && resultStr.length > 10) cache.put(cacheKey, resultStr, 600); } catch(e) {}
     }
-    
+
     // 30초 초단기 캐시로 특보현황 실시간 덮어쓰기
     try {
         const data = JSON.parse(resultStr);
