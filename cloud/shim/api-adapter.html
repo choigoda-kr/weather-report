@@ -1,0 +1,224 @@
+<script>
+/**
+ * google.script.run 어댑터 (shim)
+ * ---------------------------------------------------------------
+ * 이 페이지는 더 이상 Google Apps Script가 서빙하지 않으므로
+ * google.script.run 이 존재하지 않는다.
+ *
+ * 원본 화면 코드(JS_Logic / JS_UI)를 한 글자도 수정하지 않기 위해,
+ * google.script.run 과 동일한 모양의 객체를 미리 만들어 둔다.
+ * 원본 코드는 자신이 GAS 안에서 동작한다고 인식한 채 그대로 실행된다.
+ *
+ * 원본이 응답을 JSON.parse(res) 로 처리하므로,
+ * 성공 핸들러에는 반드시 "문자열"을 넘겨야 한다.
+ *
+ * 데이터 경로
+ *   첫 화면(기본 기간)  : Cloud Storage 스냅샷 → 즉시 표시
+ *   그 외 실시간 조회    : Cloud Function 프록시 → GAS
+ */
+(function () {
+  'use strict';
+
+  // ===============================================================
+  // 전송 모드
+  //   local : dist/data 의 스냅샷 파일 (오프라인 확인용)
+  //   cloud : Google Cloud Storage + Cloud Function
+  // ===============================================================
+  var API_MODE = 'cloud';
+
+  var ENDPOINTS = {
+    local: {
+      snapshot: './data/weather-latest.json',
+      api: null
+    },
+    cloud: {
+      snapshot: 'https://storage.googleapis.com/weather-report-507023-data/weather-latest.json',
+      api: 'https://asia-northeast3-weather-report-507023.cloudfunctions.net/weather-proxy'
+    }
+  };
+
+  var cfg = ENDPOINTS[API_MODE];
+
+  // 스냅샷이 늦어질 때 화면이 멈추지 않도록 하는 제한 시간
+  var SNAPSHOT_TIMEOUT_MS = 3000;
+
+  // --- 유틸 ------------------------------------------------------
+
+  function toLocalDateStr(d) {
+    var offset = d.getTimezoneOffset() * 60000;
+    return new Date(d - offset).toISOString().split('T')[0];
+  }
+
+  // 스냅샷이 담고 있는 기간(어제~오늘). 서버의 생성 로직과 동일 기준.
+  function snapshotRange() {
+    var today = new Date();
+    var yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { start: toLocalDateStr(yesterday), end: toLocalDateStr(today) };
+  }
+
+  function fetchSnapshotFresh() {
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, SNAPSHOT_TIMEOUT_MS) : null;
+
+    var options = { cache: 'no-store' };
+    if (controller) options.signal = controller.signal;
+
+    return fetch(cfg.snapshot, options).then(function (res) {
+      if (timer) clearTimeout(timer);
+      if (!res.ok) throw new Error('스냅샷을 불러오지 못했습니다 (HTTP ' + res.status + ')');
+      return res.json();
+    }, function (err) {
+      if (timer) clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  // <head>에서 미리 시작해 둔 요청이 있으면 첫 회에 한해 그것을 재사용한다.
+  // 자산 다운로드와 겹쳐 진행되므로 첫 화면 표시가 빨라진다.
+  var prefetchConsumed = false;
+  function loadSnapshot() {
+    if (API_MODE === 'cloud' && !prefetchConsumed && window.__SNAPSHOT_PREFETCH__) {
+      prefetchConsumed = true;
+      return window.__SNAPSHOT_PREFETCH__.catch(function (err) {
+        console.warn('[API 어댑터] 선행 요청 실패, 다시 조회합니다:', err.message);
+        return fetchSnapshotFresh();
+      });
+    }
+    return fetchSnapshotFresh();
+  }
+
+  function callApi(action, params) {
+    if (!cfg.api) {
+      return Promise.reject(new Error('실시간 조회 경로가 설정되지 않았습니다.'));
+    }
+    var qs = 'action=' + encodeURIComponent(action);
+    Object.keys(params).forEach(function (k) {
+      qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k] == null ? '' : params[k]);
+    });
+    return fetch(cfg.api + '?' + qs, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error('조회 실패 (HTTP ' + res.status + ')');
+      return res.text();   // 원본이 문자열을 기대한다
+    });
+  }
+
+  // --- 첫 화면 직후 실시간 갱신 -----------------------------------
+  //
+  // 특보(호우경보·주의보)는 시간이 생명이므로, 스냅샷으로 빠르게 그린 뒤
+  // 곧바로 실시간 값을 받아 화면을 갱신한다.
+  // 원본이 60초 주기로 수행하는 동작과 완전히 동일하며, 시점만 앞당긴 것이다.
+  // 원본 파일은 수정하지 않고, 원본이 노출한 전역 함수를 그대로 호출한다.
+
+  var firstPaintDone = false;
+  var liveRefreshQueued = false;
+
+  // 스냅샷은 "페이지를 막 열었을 때"에만 쓴다.
+  // 원본의 세션 캐시가 첫 화면을 대신 그리는 경우가 있어, 호출 순서만으로 판단하면
+  // 60초 뒤 자동갱신이 스냅샷을 받아 특보 반영이 늦어질 수 있다.
+  // 로드 직후 짧은 구간에서만 스냅샷을 허용해 그 문제를 막는다.
+  var PAGE_LOAD_TIME = Date.now();
+  var FIRST_PAINT_WINDOW_MS = 10000;
+
+  function isWithinFirstPaintWindow() {
+    return (Date.now() - PAGE_LOAD_TIME) < FIRST_PAINT_WINDOW_MS;
+  }
+
+  function scheduleImmediateLiveRefresh(startDateStr, endDateStr) {
+    if (liveRefreshQueued) return;
+    liveRefreshQueued = true;
+
+    setTimeout(function () {
+      if (typeof window.fetchWeatherData !== 'function' ||
+          typeof window.renderCards !== 'function') {
+        console.warn('[API 어댑터] 실시간 갱신을 건너뜁니다(원본 함수 없음).');
+        return;
+      }
+      window.fetchWeatherData(startDateStr, endDateStr, true).then(function (data) {
+        if (!data) return;
+        var periodText = (typeof window.getPeriodText === 'function')
+          ? window.getPeriodText(startDateStr, endDateStr) : '';
+        window.renderCards(data, periodText);
+        console.log('[API 어댑터] 실시간 갱신 완료 (특보 최신화)');
+      }).catch(function (err) {
+        console.warn('[API 어댑터] 실시간 갱신 실패:', err && err.message);
+      });
+    }, 0);
+  }
+
+  // --- 어댑터 본체 -----------------------------------------------
+
+  function createRunner(successFn, failureFn) {
+    function ok(value) {
+      Promise.resolve().then(function () {
+        if (typeof successFn === 'function') successFn(value);
+      });
+    }
+
+    function ng(err) {
+      var e = (err instanceof Error) ? err : new Error(String(err));
+      Promise.resolve().then(function () {
+        if (typeof failureFn === 'function') failureFn(e);
+        else console.error('[API 어댑터] 처리되지 않은 오류:', e);
+      });
+    }
+
+    return {
+      withSuccessHandler: function (fn) { return createRunner(fn, failureFn); },
+      withFailureHandler: function (fn) { return createRunner(successFn, fn); },
+
+      /** 메인 대시보드 데이터 */
+      getMergedWeatherData: function (lats, lons, cityStr, matchStr, startDateStr, endDateStr) {
+        var params = {
+          lats: lats, lons: lons, cities: cityStr, matches: matchStr,
+          start: startDateStr, end: endDateStr
+        };
+        var range = snapshotRange();
+        var isDefaultRange = (startDateStr === range.start && endDateStr === range.end);
+
+        // 첫 화면 1회만 스냅샷으로 즉시 응답한다(속도).
+        // 그 이후의 모든 조회는 실시간 경로를 타서 특보 신선도를 원본과 동일하게 유지한다.
+        if (isDefaultRange && !firstPaintDone && isWithinFirstPaintWindow()) {
+          firstPaintDone = true;
+          loadSnapshot().then(function (snap) {
+            if (!snap || !snap.payload) throw new Error('스냅샷 형식이 올바르지 않습니다.');
+            ok(JSON.stringify({ payload: snap.payload, lastUpdated: snap.lastUpdated }));
+            // 화면을 그린 직후, 원본이 60초마다 하는 실시간 갱신을 즉시 한 번 수행한다.
+            scheduleImmediateLiveRefresh(startDateStr, endDateStr);
+          }).catch(function (err) {
+            console.warn('[API 어댑터] 스냅샷 사용 불가, 실시간 조회로 전환:', err.message);
+            callApi('merged', params).then(ok).catch(ng);
+          });
+          return;
+        }
+
+        // 실시간 조회. 실패하면 화면이 비지 않도록 스냅샷으로 대체한다.
+        callApi('merged', params).then(ok).catch(function (err) {
+          if (!isDefaultRange) { ng(err); return; }
+          console.warn('[API 어댑터] 실시간 조회 실패, 스냅샷으로 대체:', err.message);
+          loadSnapshot().then(function (snap) {
+            ok(JSON.stringify({ payload: snap.payload, lastUpdated: snap.lastUpdated }));
+          }).catch(ng);
+        });
+      },
+
+      /** 읍·면·동 서브지역 모달 */
+      getSubRegionDataFromCache: function (cityName, startDateStr, endDateStr) {
+        callApi('subRegion', { city: cityName, start: startDateStr, end: endDateStr })
+          .then(ok).catch(ng);
+      },
+
+      /** 지도 모달 */
+      getAllMapDataFromCache: function (startDateStr, endDateStr) {
+        callApi('mapData', { start: startDateStr, end: endDateStr })
+          .then(ok).catch(ng);
+      }
+    };
+  }
+
+  if (!window.google) window.google = {};
+  if (!window.google.script) window.google.script = {};
+  window.google.script.run = createRunner(null, null);
+
+  console.log('[API 어댑터] 준비 완료 (모드: ' + API_MODE + ')');
+})();
+</script>

@@ -1,0 +1,9 @@
+{
+  "name": "weather-proxy",
+  "version": "1.0.0",
+  "description": "GAS 조회 요청에 CORS 헤더를 붙여 중계",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0"
+  }
+}

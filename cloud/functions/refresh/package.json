@@ -1,0 +1,10 @@
+{
+  "name": "weather-refresh",
+  "version": "1.0.0",
+  "description": "GAS 계산 결과를 Cloud Storage 스냅샷으로 저장",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
+    "@google-cloud/storage": "^7.7.0"
+  }
+}
